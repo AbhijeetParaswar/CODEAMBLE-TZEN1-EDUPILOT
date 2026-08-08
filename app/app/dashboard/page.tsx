@@ -13,11 +13,11 @@ function StatsSkeleton() {
       {[...Array(4)].map((_, i) => (
         <div
           key={i}
-          className="border border-black/10 dark:border-white/8 bg-gray-50 dark:bg-[#0F1117] p-4 animate-pulse"
+          className="border border-black/10 dark:border-white/8 bg-gray-50 dark:bg-[#0F1117] p-4 animate-pulse transition-all duration-500"
         >
-          <div className="w-4 h-4 bg-gray-200 dark:bg-white/10 rounded mb-2" />
-          <div className="w-12 h-7 bg-gray-200 dark:bg-white/10 rounded mb-1" />
-          <div className="w-24 h-3 bg-gray-200 dark:bg-white/10 rounded" />
+          <div className="w-4 h-4 bg-gray-200 dark:bg-white/10 rounded mb-2 transition-all duration-500" />
+          <div className="w-12 h-7 bg-gray-200 dark:bg-white/10 rounded mb-1 transition-all duration-500" />
+          <div className="w-24 h-3 bg-gray-200 dark:bg-white/10 rounded transition-all duration-500" />
         </div>
       ))}
     </div>
@@ -30,7 +30,7 @@ function CardsSkeleton() {
       {[...Array(3)].map((_, i) => (
         <div
           key={i}
-          className="border border-black/10 dark:border-white/8 bg-gray-50 dark:bg-[#0F1117] h-64 animate-pulse"
+          className="border border-black/10 dark:border-white/8 bg-gray-50 dark:bg-[#0F1117] h-64 animate-pulse transition-all duration-500"
         />
       ))}
     </div>

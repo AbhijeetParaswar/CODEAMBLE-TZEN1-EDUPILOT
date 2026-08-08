@@ -2,18 +2,23 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
+import { redirect } from "next/navigation";
 import {
   LayoutDashboard,
   GraduationCap,
   Briefcase,
+  Code2,
   MessageSquare,
   FileText,
   Bell,
   User,
   LogOut,
   BookOpen,
+  Search,
+  BarChart3,
+  FlaskConical,
 } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
+import { logout } from "@/app/auth/actions";
 
 const NAV = [
   {
@@ -32,9 +37,19 @@ const NAV = [
     label: "Internships",
   },
   {
+    href: "/dashboard/hackathons",
+    icon: <Code2 size={17} />,
+    label: "Hackathons",
+  },
+  {
     href: "/dashboard/chat",
     icon: <MessageSquare size={17} />,
     label: "AI Chat",
+  },
+  {
+    href: "/dashboard/search",
+    icon: <Search size={17} />,
+    label: "Search",
   },
   {
     href: "/dashboard/documents",
@@ -47,24 +62,20 @@ const NAV = [
     label: "Notifications",
   },
   { href: "/dashboard/profile", icon: <User size={17} />, label: "Profile" },
+  { href: "/dashboard/consent", icon: <BookOpen size={17} />, label: "Consent" },
+  { href: "/dashboard/admin", icon: <BarChart3 size={17} />, label: "Admin" },
+  { href: "/dashboard/eval", icon: <FlaskConical size={17} />, label: "AI Quality" },
 ];
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const handleLogout = async () => {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    window.location.href = "/auth/login";
-  };
 
   return (
     <aside className="hidden lg:flex flex-col w-60 shrink-0 border-r border-black/10 dark:border-white/8 bg-gray-50 dark:bg-[#0F1117] min-h-screen fixed top-0 left-0 bottom-0 transition-all duration-500">
-      <div className="h-22.5 px-6 py-5 border-b border-black/10 dark:border-white/8 transition-all duration-500">
+      <div className="px-6 py-5 border-b border-black/10 dark:border-white/8 transition-all duration-500">
         <div
           className="flex items-center gap-2 hover:cursor-pointer"
-          onClick={() => {
-            window.location.href = "/";
-          }}
+          onClick={() => redirect("/")}
         >
           <Image
             className="transition-all duration-500"
@@ -100,7 +111,7 @@ export default function Sidebar() {
       </nav>
       <div className="px-3 py-4 border-t border-black/10 dark:border-white/8 transition-all duration-500">
         <button
-          onClick={handleLogout}
+          onClick={() => logout()}
           className="flex items-center gap-3 px-3 py-2.5 w-full font-mono text-sm text-gray-500 dark:text-[#6B7280] hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/8 border-l-2 border-transparent transition-all duration-500 cursor-pointer"
         >
           <LogOut size={17} />
