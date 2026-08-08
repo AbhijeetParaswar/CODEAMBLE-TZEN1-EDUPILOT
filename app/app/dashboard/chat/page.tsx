@@ -430,7 +430,7 @@ export default function ChatPage() {
 
   return (
     <div className="flex h-full flex-col bg-white dark:bg-[#08090E] text-gray-900 dark:text-[#F0F4FF] transition-colors duration-500">
-      <div className="flex items-center justify-between border-b border-black/10 dark:border-white/8 px-4 sm:px-6 py-3 bg-white dark:bg-[#08090E] transition-colors duration-500">
+      <div className="flex items-center justify-between border-b border-black/10 dark:border-white/8 px-4 sm:px-6 py-3 bg-white dark:bg-[#08090E] transition-colors duration-500 fixed top-25 left-60 right-0">
         <div className="flex items-center gap-3 transition-colors duration-500">
           <div className="w-8 h-8 bg-[#0C65D2]/10 border border-[#0C65D2]/20 flex items-center justify-center text-[#0C65D2] shrink-0 transition-colors duration-500">
             <Bot className="h-4 w-4" />
@@ -568,7 +568,7 @@ export default function ChatPage() {
         )}
       </div>
 
-      <div className="border-t border-black/10 dark:border-white/8 px-4 sm:px-6 py-4 bg-white dark:bg-[#08090E] transition-colors duration-500">
+      <div className="border-t border-black/10 dark:border-white/8 px-4 sm:px-6 py-1.5 bg-white dark:bg-[#08090E] transition-colors duration-500 fixed bottom-0 left-60 right-0">
         <div className="max-w-4xl mx-auto">
           {selectedFile && (
             <div className="mb-2 flex w-fit items-center gap-2 border border-[#0C65D2]/30 bg-[#0C65D2]/5 px-3 py-1.5">
