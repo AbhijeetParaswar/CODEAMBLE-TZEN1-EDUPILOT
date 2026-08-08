@@ -115,17 +115,30 @@ async function apiFetch<T>(
   if (userId) headers["X-User-Id"] = userId;
   if (userEmail) headers["X-User-Email"] = userEmail;
 
-  const res = await fetch(`${API_BASE}${path}`, {
-    ...fetchOptions,
-    headers,
-    cache: next ? undefined : "no-store", 
-    ...(next ? { next } : {}),
-  });
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`API ${res.status}: ${text}`);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 3000);
+
+  try {
+    const res = await fetch(`${API_BASE}${path}`, {
+      ...fetchOptions,
+      headers,
+      signal: controller.signal,
+      cache: next ? undefined : "no-store",
+      ...(next ? { next } : {}),
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`API ${res.status}: ${text}`);
+    }
+    return res.json();
+  } catch (err) {
+    if ((err as Error).name === "AbortError") {
+      throw new Error("Backend unavailable");
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeout);
   }
-  return res.json();
 }
 
 export function getRecommendations(
