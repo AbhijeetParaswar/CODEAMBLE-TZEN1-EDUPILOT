@@ -3,10 +3,6 @@ import { createClient } from "@/lib/supabase/client";
 import { useRouter, usePathname } from "next/navigation";
 
 const SESSION_KEY = "session-login-time";
-const savedRememberMe = localStorage.getItem("remember-me") === "true";
-const EXPIRY_MS = savedRememberMe
-  ? 7 * 24 * 60 * 60 * 1000
-  : 24 * 60 * 60 * 1000;
 
 export function useSessionExpiry() {
   const router = useRouter();
@@ -31,6 +27,11 @@ export function useSessionExpiry() {
         localStorage.setItem(SESSION_KEY, Date.now().toString());
         return;
       }
+
+      const savedRememberMe = localStorage.getItem("remember-me") === "true";
+      const EXPIRY_MS = savedRememberMe
+        ? 7 * 24 * 60 * 60 * 1000
+        : 24 * 60 * 60 * 1000;
 
       const elapsed = Date.now() - parseInt(loginTime, 10);
 
