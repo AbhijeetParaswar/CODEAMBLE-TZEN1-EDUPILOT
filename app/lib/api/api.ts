@@ -447,6 +447,10 @@ export function getAdmingetAdminAnalytics(userId: string, userEmail?: string) {
   });
 }
 
+export function getAdminAnalytics(userId: string, userEmail?: string) {  // 👈 fixed name
+  return apiFetch<PlatformAnalytics>(`/api/v1/admin/analytics`, { userId, userEmail });
+}
+
 export type ConnectorStatusItem = {
   name: string;
   last_run: string | null;
