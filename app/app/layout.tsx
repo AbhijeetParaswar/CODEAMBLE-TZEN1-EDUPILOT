@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import {  JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
+import { SessionGaurd } from "@/components/SessionGaurd";
 
 const jetbrainsMono = JetBrains_Mono({
   subsets: ["latin"],
@@ -25,6 +26,7 @@ export default function RootLayout({
       <body
         className={`${jetbrainsMono.variable} antialiased `}
       >
+        <SessionGaurd/>
         <Providers>{children}</Providers>
       </body>
     </html>

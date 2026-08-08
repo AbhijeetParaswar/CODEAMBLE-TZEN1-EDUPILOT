@@ -9,6 +9,7 @@ import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 const Page = () => {
+  const SESSION_KEY = "session-login-time";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -36,6 +37,9 @@ const Page = () => {
       setLoading(false);
       return;
     }
+
+    localStorage.setItem(SESSION_KEY, Date.now().toString());
+    localStorage.setItem("remember-me", remember.toString());
 
     window.location.href = "/dashboard";
   };
