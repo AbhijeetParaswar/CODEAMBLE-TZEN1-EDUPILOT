@@ -5,6 +5,7 @@ import re
 from collections import defaultdict
 from itertools import islice
 from typing import Optional
+from urllib.parse import urlparse
 
 from sqlalchemy.orm import Session
 
@@ -49,13 +50,31 @@ def _duration_months(opp: Opportunity) -> Optional[int]:
     return None
 
 
+def _has_direct_application_url(opp: Opportunity) -> bool:
+    """Accept only source URLs that point to a specific opportunity.
+
+    A provider's homepage is not an application page. Excluding it prevents
+    a card from promising "Apply now" and then sending the student to a
+    generic site landing page.
+    """
+    url = (opp.application_url or "").strip()
+    if not url or url == "#":
+        return False
+    parsed = urlparse(url)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc or parsed.path in {"", "/"}:
+        return False
+    # Legacy fixture URLs were fabricated from this old Internshala route.
+    if parsed.netloc.endswith("internshala.com") and parsed.path.startswith("/internship/detail/"):
+        return False
+    return True
+
+
 # ─── agent ────────────────────────────────────────────────────────────────────
 
 class InternshipAgent:
     """Orchestration layer for internship recommendations.
 
-    Internshala provides live data; other sources provide static dummy data.
-    Uses source-balanced sampling so no single platform dominates the feed.
+    Shows only internships with a direct source application URL.
     """
 
     def __init__(self) -> None:
@@ -87,6 +106,7 @@ class InternshipAgent:
             .filter_by(category=OpportunityCategory.INTERNSHIP, is_active=True)
             .all()
         )
+        opportunities = [o for o in opportunities if _has_direct_application_url(o)]
 
         # 2. State filter
         if state:

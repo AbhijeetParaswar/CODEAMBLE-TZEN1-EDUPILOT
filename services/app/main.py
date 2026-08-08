@@ -42,6 +42,28 @@ async def lifespan(app: FastAPI):
 
     t = threading.Thread(target=_seed_hackathons, daemon=True)
     t.start()
+
+    # Keep opportunity links current without delaying API startup. The live
+    # internship connectors store the source's exact application URL, unlike
+    # the legacy demo records that pointed only to a platform homepage.
+    def _refresh_opportunities():
+        try:
+            from app.db.session import SessionLocal
+            db = SessionLocal()
+            try:
+                stats = run_ingestion(db)
+                import logging
+                logging.getLogger(__name__).info(
+                    "Live opportunity refresh: inserted=%s updated=%s errors=%s",
+                    stats["inserted"], stats["updated"], stats["errors"],
+                )
+            finally:
+                db.close()
+        except Exception as exc:
+            import logging
+            logging.getLogger(__name__).warning("Live opportunity refresh failed: %s", exc)
+
+    threading.Thread(target=_refresh_opportunities, daemon=True).start()
     yield
 
 

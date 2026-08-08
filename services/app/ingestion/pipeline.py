@@ -56,7 +56,7 @@ def _load_internship_connectors():
         ("app.ingestion.connectors.indeed_connector",    "IndeedConnector"),
         ("app.ingestion.connectors.naukri_connector",    "NaukriConnector"),
         ("app.ingestion.connectors.wellfound_connector", "WellfoundConnector"),
-        ("app.ingestion.connectors.unstop_connector",    "UnstopConnector"),
+        ("app.ingestion.connectors.unstop_internships_sync", "UnstopLiveInternshipConnector"),
     ]:
         try:
             import importlib
@@ -94,6 +94,7 @@ def run_ingestion(db: Session) -> dict:
                 rag.index_opportunity(opp)
                 stats["updated" if existing else "inserted"] += 1
                 source_stats["synced"] += 1
+
             db.commit()
             stats["sources"][connector.source_id] = source_stats
         except Exception as exc:
@@ -118,6 +119,38 @@ def run_ingestion(db: Session) -> dict:
                 rag.index_opportunity(opp)
                 stats["updated" if existing else "inserted"] += 1
                 source_stats["synced"] += 1
+
+            # Retire fictional seed records only after we have successfully
+            # imported at least one current Internshala posting with a real URL.
+            if connector.source_id == "internshala_live" and raw_items:
+                retired = (
+                    db.query(Opportunity)
+                    .filter(
+                        Opportunity.source == "internshala",
+                        Opportunity.external_id.like("internshala-%"),
+                        ~Opportunity.external_id.like("internshala-live-%"),
+                        Opportunity.is_active.is_(True),
+                    )
+                    .update({Opportunity.is_active: False}, synchronize_session=False)
+                )
+                if retired:
+                    source_stats["retired_demo_records"] = retired
+                    logger.info("Deactivated %s stale Internshala demo records", retired)
+
+            if connector.source_id == "unstop_live" and raw_items:
+                retired = (
+                    db.query(Opportunity)
+                    .filter(
+                        Opportunity.source == "unstop",
+                        Opportunity.external_id.like("unstop-%"),
+                        ~Opportunity.external_id.like("unstop-live-%"),
+                        Opportunity.is_active.is_(True),
+                    )
+                    .update({Opportunity.is_active: False}, synchronize_session=False)
+                )
+                if retired:
+                    source_stats["retired_demo_records"] = retired
+                    logger.info("Deactivated %s stale Unstop demo records", retired)
             db.commit()
             stats["sources"][connector.source_id] = source_stats
         except Exception as exc:

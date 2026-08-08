@@ -567,6 +567,23 @@ function InternshipCard({
           ? `\u20b9${o.amount_min.toLocaleString()}+/mo`
           : null;
 
+  // Seed data used placeholder Internshala detail slugs. They are not live
+  // postings and currently lead to Internshala's 404 page. Preserve direct
+  // links for records acquired from the live connector, but send legacy seed
+  // records to the active directory instead.
+  const isStaleInternshalaLink =
+    o.source.toLowerCase() === "internshala" &&
+    /internshala\.com\/internship\/detail\//i.test(o.application_url ?? "");
+  const isGenericPlatformLink = (() => {
+    try {
+      const url = new URL(o.application_url ?? "");
+      return url.pathname === "/" && !url.search && !url.hash;
+    } catch {
+      return false;
+    }
+  })();
+  const applicationUrl = isStaleInternshalaLink || isGenericPlatformLink ? null : o.application_url;
+
   return (
     <div className="border border-black/10 dark:border-white/8 bg-white dark:bg-[#0F1117] flex flex-col transition-all duration-500">
       <div className="flex items-start justify-between gap-4 p-4">
@@ -708,15 +725,20 @@ function InternshipCard({
         >
           <BookmarkPlus size={12} /> {saved ? "Saved" : "Save & track"}
         </button>
-        {o.application_url && o.application_url !== "#" && (
+        {applicationUrl && applicationUrl !== "#" && (
           <a
-            href={o.application_url}
+            href={applicationUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-1.5 px-3 py-1.5 border border-black/10 dark:border-white/8 font-mono text-[11px] text-gray-500 hover:text-[#0C65D2]"
           >
             <ExternalLink size={12} /> Apply now
           </a>
+        )}
+        {(isStaleInternshalaLink || isGenericPlatformLink) && (
+          <span className="flex items-center px-3 py-1.5 font-mono text-[11px] text-gray-400">
+            Demo listing — no live application link
+          </span>
         )}
         <FeedbackWidget
           opportunityId={o.id}
