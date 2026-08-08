@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import {
   FileText,
   Upload,
@@ -11,9 +11,17 @@ import {
   Loader2,
   RefreshCw,
   Shield,
+  BookOpen,
 } from "lucide-react";
 import type { DocumentStatus } from "@/lib/api/api";
-import { uploadDocument } from "@/lib/api/api";
+import { uploadDocument, getConsents, setConsent } from "@/lib/api/api";
+
+const PURPOSE_LABELS: Record<string, string> = {
+  aadhaar_verification: "Use my Aadhaar to auto-verify eligibility",
+  income_certificate_processing: "Process income certificate in secure enclave",
+  eligibility_auto_check: "Run automatic eligibility checks against schemes",
+  document_ocr: "Extract data from uploaded documents via OCR",
+};
 
 const DOC_TYPES = [
   { value: "aadhaar", label: "Aadhaar Card" },
@@ -61,15 +69,95 @@ const STATUS_CONFIG: Record<
 
 interface Props {
   userId: string;
+  userEmail: string;
 }
 
-export default function DocumentUpload({ userId }: Props) {
+interface ConsentManagerProps {
+  consents: Record<string, boolean>;
+  onToggle: (purpose: string, granted: boolean) => void;
+}
+
+function ConsentManager({ consents, onToggle }: ConsentManagerProps) {
+  return (
+    <div className="flex flex-col gap-4 transition-all duration-500">
+      <div>
+        <h2 className="font-syne text-lg font-bold flex items-center gap-2 transition-all duration-500">
+          <BookOpen size={18} className="text-[#0C65D2]" />
+          Consent Management
+        </h2>
+        <p className="font-mono text-[12px] text-gray-400 mt-1 transition-all duration-500">
+          DPDP Act compliant opt-in per data use case. All access is
+          audit-logged.
+        </p>
+      </div>
+      {Object.entries(PURPOSE_LABELS).map(([purpose, label]) => (
+        <label
+          key={purpose}
+          className="flex items-start gap-3 border border-black/10 dark:border-white/8 p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-[#0F1117] transition-all duration-500"
+        >
+          <input
+            type="checkbox"
+            checked={consents[purpose] ?? false}
+            onChange={(e) => onToggle(purpose, e.target.checked)}
+            className="mt-0.5 transition-all duration-500"
+          />
+          <div>
+            <p className="font-mono text-[13px] text-gray-900 dark:text-[#F0F4FF] transition-all duration-500">
+              {label}
+            </p>
+            <p className="font-mono text-[10px] text-gray-400 mt-0.5">
+              {purpose}
+            </p>
+          </div>
+        </label>
+      ))}
+    </div>
+  );
+}
+
+export default function DocumentUpload({ userId, userEmail }: Props) {
+  const [consents, setConsents] = useState<Record<string, boolean>>({});
+  const [consentsLoading, setConsentsLoading] = useState(true);
   const [docType, setDocType] = useState(DOC_TYPES[0].value);
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploaded, setUploaded] = useState<DocumentStatus[]>([]);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    getConsents(userId, userEmail)
+      .then((records) => {
+        const map: Record<string, boolean> = {};
+        records.forEach((r) => {
+          map[r.purpose] = r.granted;
+        });
+        setConsents(map);
+      })
+      .finally(() => setConsentsLoading(false));
+  }, [userId, userEmail]);
+
+  const allowedDocs = DOC_TYPES.filter((dt) => {
+    if (dt.value === "aadhaar")
+      return consents["aadhaar_verification"] ?? false;
+    if (dt.value === "income_certificate")
+      return consents["income_certificate_processing"] ?? false;
+    return true;
+  });
+
+  useEffect(() => {
+    if (!allowedDocs.find((d) => d.value === docType)) {
+      setDocType(allowedDocs[0]?.value ?? "");
+    }
+  }, [consents]);
+
+  const handleToggle = useCallback(
+    async (purpose: string, granted: boolean) => {
+      setConsents((c) => ({ ...c, [purpose]: granted }));
+      await setConsent(userId, purpose, granted, userEmail);
+    },
+    [userId, userEmail],
+  );
 
   const handleUpload = useCallback(async () => {
     if (!file) return;
@@ -88,8 +176,7 @@ export default function DocumentUpload({ userId }: Props) {
   }, [file, docType, userId]);
 
   return (
-    <div className="flex flex-col gap-6 max-w-2xl transition-all duration-500">
-      {/* Header */}
+    <div className="flex flex-col gap-8 max-w-2xl transition-all duration-500">
       <div>
         <h1 className="font-syne text-xl font-bold flex items-center gap-2 transition-all duration-500">
           <Shield size={20} className="text-[#0C65D2]" />
@@ -101,87 +188,105 @@ export default function DocumentUpload({ userId }: Props) {
         </p>
       </div>
 
-      {/* Upload Form */}
+    
+      {consentsLoading ? (
+        <p className="font-mono text-[12px] text-gray-400">Loading consents…</p>
+      ) : (
+        <ConsentManager consents={consents} onToggle={handleToggle} />
+      )}
+
+
       <div className="border border-black/10 dark:border-white/8 bg-gray-50 dark:bg-[#0F1117] p-6 flex flex-col gap-4 transition-all duration-500">
         <p className="font-mono text-[13px] font-bold text-gray-900 dark:text-[#F0F4FF] transition-all duration-500">
           Upload Document
         </p>
 
-        {/* Document Type Selector */}
-        <div className="flex flex-col gap-1.5">
-          <label
-            htmlFor="doc-type-select"
-            className="font-mono text-[11px] text-gray-500"
-          >
-            Document Type
-          </label>
-          <select
-            id="doc-type-select"
-            value={docType}
-            onChange={(e) => setDocType(e.target.value)}
-            className="px-3 py-2 border border-black/10 dark:border-white/8 bg-white dark:bg-[#161822] font-mono text-[13px] outline-none focus:border-[#0C65D2]/40 transition-all duration-500"
-          >
-            {DOC_TYPES.map((dt) => (
-              <option key={dt.value} value={dt.value}>
-                {dt.label}
-              </option>
-            ))}
-          </select>
-        </div>
+        {allowedDocs.length === 0 ? (
+          <p className="font-mono text-[12px] text-amber-500">
+            Enable at least one consent above to unlock document upload.
+          </p>
+        ) : (
+          <>
+            {/* Document Type Selector */}
+            <div className="flex flex-col gap-1.5">
+              <label
+                htmlFor="doc-type-select"
+                className="font-mono text-[11px] text-gray-500"
+              >
+                Document Type
+              </label>
+              <select
+                id="doc-type-select"
+                value={docType}
+                onChange={(e) => setDocType(e.target.value)}
+                className="px-3 py-2 border border-black/10 dark:border-white/8 bg-white dark:bg-[#161822] font-mono text-[13px] outline-none focus:border-[#0C65D2]/40 transition-all duration-500"
+              >
+                {allowedDocs.map((dt) => (
+                  <option key={dt.value} value={dt.value}>
+                    {dt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-        {/* File Picker */}
-        <div className="flex flex-col gap-1.5 transition-all duration-500">
-          <label
-            htmlFor="doc-file-input"
-            className="font-mono text-[11px] text-gray-500"
-          >
-            File (PDF, PNG, JPG)
-          </label>
-          <div
-            onClick={() => fileInputRef.current?.click()}
-            className="border-2 border-dashed border-black/10 dark:border-white/8 p-8 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-[#0C65D2]/30 transition-all duration-500"
-          >
-            <Upload size={24} className="text-gray-300 dark:text-[#3B3F51]" />
-            <p className="font-mono text-[12px] text-gray-400">
-              {file ? file.name : "Click to select file"}
-            </p>
-            {file && (
-              <p className="font-mono text-[10px] text-gray-400">
-                {(file.size / 1024).toFixed(1)} KB
-              </p>
+            {/* File Picker */}
+            <div className="flex flex-col gap-1.5 transition-all duration-500">
+              <label
+                htmlFor="doc-file-input"
+                className="font-mono text-[11px] text-gray-500"
+              >
+                File (PDF, PNG, JPG)
+              </label>
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                className="border-2 border-dashed border-black/10 dark:border-white/8 p-8 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-[#0C65D2]/30 transition-all duration-500"
+              >
+                <Upload
+                  size={24}
+                  className="text-gray-300 dark:text-[#3B3F51]"
+                />
+                <p className="font-mono text-[12px] text-gray-400">
+                  {file ? file.name : "Click to select file"}
+                </p>
+                {file && (
+                  <p className="font-mono text-[10px] text-gray-400">
+                    {(file.size / 1024).toFixed(1)} KB
+                  </p>
+                )}
+              </div>
+              <input
+                id="doc-file-input"
+                ref={fileInputRef}
+                type="file"
+                accept=".pdf,.png,.jpg,.jpeg"
+                className="hidden"
+                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+              />
+            </div>
+
+            {error && (
+              <div className="flex items-center gap-2 text-red-500 font-mono text-[12px]">
+                <XCircle size={14} /> {error}
+              </div>
             )}
-          </div>
-          <input
-            id="doc-file-input"
-            ref={fileInputRef}
-            type="file"
-            accept=".pdf,.png,.jpg,.jpeg"
-            className="hidden"
-            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-          />
-        </div>
 
-        {error && (
-          <div className="flex items-center gap-2 text-red-500 font-mono text-[12px]">
-            <XCircle size={14} /> {error}
-          </div>
+            <button
+              onClick={handleUpload}
+              disabled={!file || uploading}
+              className="flex items-center justify-center gap-2 px-4 py-2.5 bg-[#0C65D2] hover:bg-[#0B5ABD] disabled:opacity-50 text-white font-mono text-[12px] transition-all duration-500"
+            >
+              {uploading ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : (
+                <Upload size={14} />
+              )}
+              {uploading ? "Encrypting & Verifying…" : "Upload & Verify"}
+            </button>
+          </>
         )}
-
-        <button
-          onClick={handleUpload}
-          disabled={!file || uploading}
-          className="flex items-center justify-center gap-2 px-4 py-2.5 bg-[#0C65D2] hover:bg-[#0B5ABD] disabled:opacity-50 text-white font-mono text-[12px] transition-all duration-500"
-        >
-          {uploading ? (
-            <Loader2 size={14} className="animate-spin" />
-          ) : (
-            <Upload size={14} />
-          )}
-          {uploading ? "Encrypting & Verifying…" : "Upload & Verify"}
-        </button>
       </div>
 
-      {/* Uploaded Documents */}
+  
       {uploaded.length > 0 && (
         <div className="flex flex-col gap-3">
           <p className="font-mono text-[13px] font-bold text-gray-900 dark:text-[#F0F4FF]">
@@ -197,7 +302,8 @@ export default function DocumentUpload({ userId }: Props) {
 }
 
 function DocumentCard({ doc }: { doc: DocumentStatus }) {
-  const status = STATUS_CONFIG[doc.verification_status] || STATUS_CONFIG.pending;
+  const status =
+    STATUS_CONFIG[doc.verification_status] || STATUS_CONFIG.pending;
   const fields = doc.extracted_fields
     ? Object.entries(doc.extracted_fields)
     : [];
@@ -218,11 +324,12 @@ function DocumentCard({ doc }: { doc: DocumentStatus }) {
         </div>
         <div className={`flex items-center gap-1.5 ${status.color}`}>
           {status.icon}
-          <span className="font-mono text-[11px] font-bold">{status.label}</span>
+          <span className="font-mono text-[11px] font-bold">
+            {status.label}
+          </span>
         </div>
       </div>
 
-      {/* Confidence Bar */}
       <div className="flex items-center gap-3">
         <span className="font-mono text-[11px] text-gray-500 shrink-0">
           Confidence
@@ -238,7 +345,6 @@ function DocumentCard({ doc }: { doc: DocumentStatus }) {
         </span>
       </div>
 
-      {/* Extracted Fields */}
       {fields.length > 0 && (
         <div className="grid grid-cols-2 gap-2">
           {fields.slice(0, 8).map(([key, value]) => (
@@ -257,7 +363,6 @@ function DocumentCard({ doc }: { doc: DocumentStatus }) {
         </div>
       )}
 
-      {/* Re-upload for rejected */}
       {doc.verification_status === "rejected" && (
         <button className="flex items-center gap-1.5 px-3 py-1.5 border border-red-500/30 text-red-500 font-mono text-[11px] hover:bg-red-500/5 w-fit transition-all">
           <RefreshCw size={12} /> Re-upload Document

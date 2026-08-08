@@ -8,8 +8,6 @@ const PURPOSE_LABELS: Record<string, string> = {
   income_certificate_processing: "Process income certificate in secure enclave",
   eligibility_auto_check: "Run automatic eligibility checks against schemes",
   document_ocr: "Extract data from uploaded documents via OCR",
-  notification_email: "Send deadline reminders via email",
-  notification_sms: "Send deadline reminders via SMS",
 };
 
 interface Props {

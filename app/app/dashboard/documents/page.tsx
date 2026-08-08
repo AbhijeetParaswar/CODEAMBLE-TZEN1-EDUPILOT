@@ -11,5 +11,5 @@ export default async function DocumentsPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/auth/login");
 
-  return <DocumentUpload userId={user.id} />;
+  return <DocumentUpload userId={user.id} userEmail={user.email ?? ""} />;
 }
