@@ -4,7 +4,9 @@ import { useRouter, usePathname } from "next/navigation";
 
 const SESSION_KEY = "session-login-time";
 const savedRememberMe = localStorage.getItem("remember-me") === "true";
-const EXPIRY_MS = savedRememberMe ? 30 * 24 * 60 * 60 * 1000 : 7 * 24 * 60 * 60 * 1000;
+const EXPIRY_MS = savedRememberMe
+  ? 7 * 24 * 60 * 60 * 1000
+  : 24 * 60 * 60 * 1000;
 
 export function useSessionExpiry() {
   const router = useRouter();
@@ -12,6 +14,7 @@ export function useSessionExpiry() {
   const supabase = createClient();
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
     const checkExpiry = async () => {
       const {
         data: { session },
