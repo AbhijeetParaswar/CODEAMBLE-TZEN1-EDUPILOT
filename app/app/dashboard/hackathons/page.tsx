@@ -1,3 +1,4 @@
+export const runtime = "edge";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import HackathonsClient from "../_components/HackathonsClient";

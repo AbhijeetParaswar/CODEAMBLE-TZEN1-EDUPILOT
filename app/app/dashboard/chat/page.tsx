@@ -1,4 +1,5 @@
 "use client";
+export const runtime = "edge";
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import type { Session } from "@supabase/supabase-js";
