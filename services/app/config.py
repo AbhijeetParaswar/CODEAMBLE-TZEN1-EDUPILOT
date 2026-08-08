@@ -19,6 +19,8 @@ class Settings(BaseSettings):
     supabase_jwt_secret: str = ""
     dev_mode: bool = True
     redis_url: str = "redis://localhost:6379/0"
+    groq_api_key: str = ""
+    groq_model: str = "llama-3.3-70b-versatile"
     
     # PostgreSQL Configuration
     postgres_host: str = "localhost"
