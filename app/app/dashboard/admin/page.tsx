@@ -6,10 +6,12 @@ import AdminDashboard from "../_components/AdminDashboard";
 
 export default async function AdminPage() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/auth/login");
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) redirect("/auth/login");
 
-  // Check admin status
+  const { user } = session;
+  const token = session.access_token;
+
   const { data: profile } = await supabase
     .from("profiles")
     .select("is_admin")
@@ -27,5 +29,5 @@ export default async function AdminPage() {
     );
   }
 
-  return <AdminDashboard userId={user.id} userEmail={user.email ?? ""} />;
+  return <AdminDashboard userId={user.id} userEmail={user.email ?? ""} token={token} />;
 }

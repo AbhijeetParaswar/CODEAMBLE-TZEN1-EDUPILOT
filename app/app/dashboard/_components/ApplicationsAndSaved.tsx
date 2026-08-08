@@ -45,11 +45,13 @@ interface AppData {
 export default async function ApplicationsAndSaved({
   userId,
   email,
+  token
 }: {
   userId: string;
   email: string;
+  token:string
 }) {
-  const appsData = await getApplications(userId, email).catch(
+  const appsData = await getApplications(userId, email, token).catch(
     () => [] as AppData[],
   );
 

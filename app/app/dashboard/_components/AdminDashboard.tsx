@@ -35,9 +35,10 @@ import {
 interface Props {
   userId: string;
   userEmail: string;
+  token?: string;
 }
 
-export default function AdminDashboard({ userId, userEmail }: Props) {
+export default function AdminDashboard({ userId, userEmail, token }: Props) {
   const [analytics, setAnalytics] = useState<PlatformAnalytics | null>(null);
   const [connectors, setConnectors] = useState<ConnectorStatusItem[]>([]);
   const [freshness, setFreshness] = useState<DataFreshness | null>(null);
@@ -49,10 +50,10 @@ export default function AdminDashboard({ userId, userEmail }: Props) {
     setLoading(true);
     try {
       const [a, c, f, acc] = await Promise.allSettled([
-        getAdminAnalytics(userId, userEmail),
-        getConnectorStatuses(userId, userEmail),
-        getDataFreshness(userId, userEmail),
-        getAccuracyMetrics(userId, userEmail),
+        getAdminAnalytics(userId, userEmail, token),
+        getConnectorStatuses(userId, userEmail, token),
+        getDataFreshness(userId, userEmail, token),
+        getAccuracyMetrics(userId, userEmail, token),
       ]);
       if (a.status === "fulfilled") setAnalytics(a.value);
       if (c.status === "fulfilled") setConnectors(c.value.connectors);
@@ -68,10 +69,10 @@ export default function AdminDashboard({ userId, userEmail }: Props) {
     async function loadData() {
       try {
         const [a, c, f, acc] = await Promise.allSettled([
-          getAdminAnalytics(userId, userEmail),
-          getConnectorStatuses(userId, userEmail),
-          getDataFreshness(userId, userEmail),
-          getAccuracyMetrics(userId, userEmail),
+          getAdminAnalytics(userId, userEmail, token),
+          getConnectorStatuses(userId, userEmail, token),
+          getDataFreshness(userId, userEmail, token),
+          getAccuracyMetrics(userId, userEmail, token),
         ]);
         if (!isCancelled) {
           if (a.status === "fulfilled") setAnalytics(a.value);
@@ -93,7 +94,7 @@ export default function AdminDashboard({ userId, userEmail }: Props) {
     async (name?: string) => {
       setTriggering(name ?? "all");
       try {
-        await triggerConnectorRun(userId, name, userEmail);
+        await triggerConnectorRun(userId, name, userEmail, token);
         await fetchAll();
       } finally {
         setTriggering(null);

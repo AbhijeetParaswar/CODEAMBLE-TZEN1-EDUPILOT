@@ -43,6 +43,7 @@ const EMPTY_FILTERS: Filters = {
 interface Props {
   userId: string;
   userEmail: string;
+  token?: string;
 }
 
 const PLATFORMS: Record<string, { label: string; color: string; bg: string }> =
@@ -176,7 +177,7 @@ function buildUrl(
 }
 
 
-export default function HackathonsClient({ userId, userEmail }: Props) {
+export default function HackathonsClient({ userId, userEmail, token }: Props) {
   const [items, setItems] = useState<HackathonItem[]>([]);
   const [total, setTotal] = useState(0);
   const [query, setQuery] = useState("");
@@ -191,7 +192,7 @@ export default function HackathonsClient({ userId, userEmail }: Props) {
       setLoading(true);
       try {
         const res = await fetch(buildUrl(apiBase, q, f), {
-          headers: { "X-User-Id": userId, "X-User-Email": userEmail },
+          headers: { "X-User-Id": userId, "X-User-Email": userEmail, ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         });
         if (!res.ok) throw new Error(`${res.status}`);
         const data = await res.json();

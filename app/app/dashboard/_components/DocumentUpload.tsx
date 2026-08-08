@@ -70,6 +70,7 @@ const STATUS_CONFIG: Record<
 interface Props {
   userId: string;
   userEmail: string;
+  token?: string;
 }
 
 interface ConsentManagerProps {
@@ -115,7 +116,7 @@ function ConsentManager({ consents, onToggle }: ConsentManagerProps) {
   );
 }
 
-export default function DocumentUpload({ userId, userEmail }: Props) {
+export default function DocumentUpload({ userId, userEmail, token }: Props) {
   const [consents, setConsents] = useState<Record<string, boolean>>({});
   const [consentsLoading, setConsentsLoading] = useState(true);
   const [docType, setDocType] = useState(DOC_TYPES[0].value);
@@ -126,7 +127,7 @@ export default function DocumentUpload({ userId, userEmail }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    getConsents(userId, userEmail)
+    getConsents(userId, userEmail, token)
       .then((records) => {
         const map: Record<string, boolean> = {};
         records.forEach((r) => {
@@ -154,7 +155,7 @@ export default function DocumentUpload({ userId, userEmail }: Props) {
   const handleToggle = useCallback(
     async (purpose: string, granted: boolean) => {
       setConsents((c) => ({ ...c, [purpose]: granted }));
-      await setConsent(userId, purpose, granted, userEmail);
+      await setConsent(userId, purpose, granted, userEmail, token);
     },
     [userId, userEmail],
   );
@@ -164,7 +165,7 @@ export default function DocumentUpload({ userId, userEmail }: Props) {
     setUploading(true);
     setError(null);
     try {
-      const result = await uploadDocument(userId, docType, file);
+      const result = await uploadDocument(userId, docType, file, undefined, token);
       setUploaded((prev) => [result, ...prev]);
       setFile(null);
       if (fileInputRef.current) fileInputRef.current.value = "";

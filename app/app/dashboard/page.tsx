@@ -39,25 +39,26 @@ function CardsSkeleton() {
 
 export default async function DashboardPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/auth/login");
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) redirect("/auth/login");
+
+  const { user } = session;
+  const token = session.access_token;
 
   return (
     <div className="flex flex-col gap-6 max-w-300 transition-all duration-500">
       <Suspense fallback={<StatsSkeleton />}>
-        <StatsSection userId={user.id} email={user.email ?? ""} />
+        <StatsSection userId={user.id} email={user.email ?? ""} token={token} />
       </Suspense>
 
       <QuickActions />
 
       <Suspense fallback={<CardsSkeleton />}>
-        <ScholarshipsAndDeadlines userId={user.id} email={user.email ?? ""} />
+        <ScholarshipsAndDeadlines userId={user.id} email={user.email ?? ""} token={token} />
       </Suspense>
 
       <Suspense fallback={<CardsSkeleton />}>
-        <ApplicationsAndSaved userId={user.id} email={user.email ?? ""} />
+        <ApplicationsAndSaved userId={user.id} email={user.email ?? ""} token={token} />
       </Suspense>
     </div>
   );

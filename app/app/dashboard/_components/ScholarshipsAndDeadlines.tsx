@@ -44,17 +44,19 @@ interface Match {
 export default async function ScholarshipsAndDeadlines({
   userId,
   email,
+  token
 }: {
   userId: string;
   email: string;
+  token: string
 }) {
   const [recData, stats] = await Promise.all([
-    getRecommendations(userId, email).catch(() => ({
+    getRecommendations(userId, email, undefined, token).catch(() => ({
       matches: [],
       total: 0,
       readiness_score: 0,
     })),
-    getDashboardStats(userId, email).catch(() => ({
+    getDashboardStats(userId, email, token).catch(() => ({
       readiness_score: 0,
       scholarships_matched: 0,
       internships_available: 0,

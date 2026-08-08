@@ -44,6 +44,7 @@ const EMPTY_FILTERS: Filters = {
 interface Props {
   userId: string;
   userEmail: string;
+  token?: string;
 }
 
 const PLATFORMS: Record<string, { label: string; color: string; bg: string }> =
@@ -152,7 +153,7 @@ function buildUrl(
   return `${base}/api/v1/internships/recommendations?${p}`;
 }
 
-export default function InternshipsClient({ userId, userEmail }: Props) {
+export default function InternshipsClient({ userId, userEmail, token }: Props) {
   const [matches, setMatches] = useState<InternshipMatchResult[]>([]);
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
@@ -168,7 +169,7 @@ export default function InternshipsClient({ userId, userEmail }: Props) {
       if (!isInitial) setSearched(true);
       try {
         const res = await fetch(buildUrl(apiBase, q, f), {
-          headers: { "X-User-Id": userId, "X-User-Email": userEmail },
+          headers: { "X-User-Id": userId, "X-User-Email": userEmail, ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         });
         const data = await res.json();
         setMatches(data.matches ?? []);
@@ -186,7 +187,7 @@ export default function InternshipsClient({ userId, userEmail }: Props) {
     let cancelled = false;
     setLoading(true);
     fetch(buildUrl(apiBase, "", EMPTY_FILTERS), {
-      headers: { "X-User-Id": userId, "X-User-Email": userEmail },
+      headers: { "X-User-Id": userId, "X-User-Email": userEmail, ...(token ? { Authorization: `Bearer ${token}` } : {}) },
     })
       .then((r) => r.json())
       .then((data) => {
@@ -523,7 +524,7 @@ export default function InternshipsClient({ userId, userEmail }: Props) {
             <InternshipCard
               key={m.opportunity.id}
               match={m}
-              onSave={() => saveInternship(userId, m.opportunity.id, userEmail)}
+              onSave={() => saveInternship(userId, m.opportunity.id, userEmail, token)}
               userId={userId}
               userEmail={userEmail}
             />

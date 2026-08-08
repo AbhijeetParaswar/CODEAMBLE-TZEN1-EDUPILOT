@@ -6,19 +6,21 @@ import Link from "next/link";
 export default async function StatsSection({
   userId,
   email,
+  token
 }: {
   userId: string;
   email: string;
+  token:string;
 }) {
   const [stats, profile] = await Promise.all([
-    getDashboardStats(userId, email).catch(() => ({
+    getDashboardStats(userId, email, token).catch(() => ({
       scholarships_matched: 0,
       internships_available: 0,
       documents_uploaded: 0,
       applications_tracked: 0,
       readiness_score: 0,
     })),
-    getProfile(userId, email).catch(() => null),
+    getProfile(userId, email, token).catch(() => null),
   ]);
 
   const profileComplete = !!(

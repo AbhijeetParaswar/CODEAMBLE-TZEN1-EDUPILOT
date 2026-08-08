@@ -21,6 +21,7 @@ import {
 interface Props {
   userId: string;
   userEmail: string;
+  token?: string;
 }
 
 const CHANNEL_TOGGLES = [
@@ -74,7 +75,7 @@ const DEFAULT_PREFS: NotificationPreferences = {
   status_updates: true,
 };
 
-export default function NotificationPrefs({ userId, userEmail }: Props) {
+export default function NotificationPrefs({ userId, userEmail, token }: Props) {
   const [prefs, setPrefs] = useState<NotificationPreferences>(DEFAULT_PREFS);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -83,7 +84,7 @@ export default function NotificationPrefs({ userId, userEmail }: Props) {
   useEffect(() => {
     (async () => {
       try {
-        const data = await getNotificationPreferences(userId, userEmail);
+        const data = await getNotificationPreferences(userId, userEmail, token);
         setPrefs(data);
       } catch {
         // Keep defaults on failure (API may not be ready)
@@ -104,7 +105,7 @@ export default function NotificationPrefs({ userId, userEmail }: Props) {
   const handleSave = useCallback(async () => {
     setSaving(true);
     try {
-      await updateNotificationPreferences(userId, prefs, userEmail);
+      await updateNotificationPreferences(userId, prefs, userEmail, token);
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch {

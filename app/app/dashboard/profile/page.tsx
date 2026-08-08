@@ -5,9 +5,7 @@ import ProfileFormWrapper from "../_components/ProfileFormWrapper";
 
 export default async function ProfilePage() {
   const supabase = await createClient();
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
+  const { data: { session } } = await supabase.auth.getSession();
   if (!session) redirect("/auth/login");
 
   return (

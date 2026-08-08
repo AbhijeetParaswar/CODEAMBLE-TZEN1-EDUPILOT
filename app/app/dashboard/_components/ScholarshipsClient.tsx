@@ -18,6 +18,7 @@ import FeedbackWidget from "./FeedbackWidget";
 interface Props {
   userId: string;
   userEmail: string;
+  token: string
 }
 
 function SkeletonCard() {
@@ -43,14 +44,14 @@ function SkeletonCard() {
   );
 }
 
-export default function ScholarshipsClient({ userId, userEmail }: Props) {
+export default function ScholarshipsClient({ userId, userEmail, token }: Props) {
   const [matches, setMatches] = useState<MatchResult[]>([]);
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
 
   useEffect(() => {
-    getRecommendations(userId, userEmail)
+    getRecommendations(userId, userEmail, undefined, token)
       .then((rec) => setMatches(rec.matches))
       .catch(() => setMatches([]))
       .finally(() => setInitialLoading(false));
@@ -63,7 +64,7 @@ export default function ScholarshipsClient({ userId, userEmail }: Props) {
     try {
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/v1/scholarships/recommendations?query=${encodeURIComponent(query)}&limit=20`,
-        { headers: { "X-User-Id": userId, "X-User-Email": userEmail } },
+        { headers: { "X-User-Id": userId, "X-User-Email": userEmail, ...(token ? { Authorization: `Bearer ${token}` } : {}) } },
       );
       const data = await res.json();
       setMatches(data.matches);
@@ -73,7 +74,7 @@ export default function ScholarshipsClient({ userId, userEmail }: Props) {
   }
 
   async function handleSave(opportunityId: string) {
-    await saveOpportunity(userId, opportunityId, userEmail);
+    await saveOpportunity(userId, opportunityId, userEmail, token);
   }
 
   return (

@@ -85,6 +85,9 @@ export default function ChatPage() {
     () => ({
       "X-User-Id": session?.user.id || "",
       "X-User-Email": session?.user.email || "",
+      ...(session?.access_token
+        ? { Authorization: `Bearer ${session.access_token}` }
+        : {}),
     }),
     [session],
   );

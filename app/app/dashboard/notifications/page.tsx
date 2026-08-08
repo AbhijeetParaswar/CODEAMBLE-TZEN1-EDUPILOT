@@ -8,19 +8,21 @@ import NotificationPrefs from "../_components/NotificationPrefs";
 
 export default async function NotificationsPage() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/auth/login");
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) redirect("/auth/login");
+
+  const { user } = session;
+  const token = session.access_token;
 
   let notifications: Awaited<ReturnType<typeof getNotifications>> = [];
   try {
-    notifications = await getNotifications(user.id, user.email ?? "");
+    notifications = await getNotifications(user.id, user.email ?? "", token);
   } catch {
     notifications = [];
   }
 
   return (
     <div className="flex flex-col gap-8 max-w-2xl">
-      {/* Notifications List */}
       <div className="flex flex-col gap-6">
         <div>
           <h1 className="font-syne text-xl font-bold">Notifications</h1>
@@ -52,9 +54,8 @@ export default async function NotificationsPage() {
         )}
       </div>
 
-      {/* Preferences Section */}
       <div className="border-t border-black/10 dark:border-white/8 pt-6">
-        <NotificationPrefs userId={user.id} userEmail={user.email ?? ""} />
+        <NotificationPrefs userId={user.id} userEmail={user.email ?? ""} token={token} />
       </div>
     </div>
   );
