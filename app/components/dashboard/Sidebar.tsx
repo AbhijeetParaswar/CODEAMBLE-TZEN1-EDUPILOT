@@ -3,6 +3,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
 import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 import {
   LayoutDashboard,
   GraduationCap,
@@ -18,7 +19,7 @@ import {
   BarChart3,
   FlaskConical,
 } from "lucide-react";
-import { logout } from "@/app/auth/actions";
+import { useEffect, useState } from "react";
 
 const NAV = [
   {
@@ -62,13 +63,32 @@ const NAV = [
     label: "Notifications",
   },
   { href: "/dashboard/profile", icon: <User size={17} />, label: "Profile" },
-  { href: "/dashboard/consent", icon: <BookOpen size={17} />, label: "Consent" },
   { href: "/dashboard/admin", icon: <BarChart3 size={17} />, label: "Admin" },
-  { href: "/dashboard/eval", icon: <FlaskConical size={17} />, label: "AI Quality" },
+  {
+    href: "/dashboard/eval",
+    icon: <FlaskConical size={17} />,
+    label: "AI Quality",
+  },
 ];
 
 export default function Sidebar() {
+  const handleLogout = async () => {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    window.location.href = "/auth/login";
+  };
   const pathname = usePathname();
+
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUserEmail(session?.user?.email || null);
+    });
+  }, []);
+
+  const isAdmin = userEmail === "codexdev25@gmail.com";
 
   return (
     <aside className="hidden lg:flex flex-col w-60 shrink-0 border-r border-black/10 dark:border-white/8 bg-gray-50 dark:bg-[#0F1117] min-h-screen fixed top-0 left-0 bottom-0 transition-all duration-500">
@@ -92,6 +112,11 @@ export default function Sidebar() {
       </div>
       <nav className="flex flex-col gap-1 px-3 py-4 flex-1">
         {NAV.map((item) => {
+          if (
+            (item.href.includes("/admin") || item.href.includes("/eval")) &&
+            !isAdmin
+          )
+            return null;
           const isActive = pathname === item.href;
           return (
             <Link
@@ -111,7 +136,7 @@ export default function Sidebar() {
       </nav>
       <div className="px-3 py-4 border-t border-black/10 dark:border-white/8 transition-all duration-500">
         <button
-          onClick={() => logout()}
+          onClick={handleLogout}
           className="flex items-center gap-3 px-3 py-2.5 w-full font-mono text-sm text-gray-500 dark:text-[#6B7280] hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/8 border-l-2 border-transparent transition-all duration-500 cursor-pointer"
         >
           <LogOut size={17} />
