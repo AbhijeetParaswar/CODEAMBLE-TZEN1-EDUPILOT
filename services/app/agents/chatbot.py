@@ -8,7 +8,7 @@ from datetime import datetime
 
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from langchain_ollama import ChatOllama
+from langchain_groq import ChatGroq
 from langgraph.graph import StateGraph, START, END
 from langgraph.graph.message import add_messages
 from sqlalchemy.orm import Session
@@ -47,21 +47,18 @@ class ChatbotAgent:
         self,
         model_name: Optional[str] = None,
         temperature: Optional[float] = None,
-        base_url: Optional[str] = None
     ):
         # Use config settings with optional overrides
-        self.model_name = model_name or settings.ollama_model
+        self.model_name = model_name or settings.groq_model
         # Lower temperature for factual Q&A to reduce hallucination
         self.temperature = temperature if temperature is not None else 0.1
-        self.base_url = base_url or settings.ollama_base_url
 
-        # Initialize Ollama LLM - token limit will be set dynamically based on query type
-        self.llm = ChatOllama(
+        # Groq replaces Ollama — zero infra, runs in Groq's cloud
+        self.llm = ChatGroq(
             model=self.model_name,
             temperature=self.temperature,
-            base_url=self.base_url,
-            streaming=True
-            # num_predict removed - will be set per query based on context
+            groq_api_key=settings.groq_api_key,
+            streaming=True,
         )
 
         # Initialize vector search for RAG

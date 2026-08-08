@@ -1,0 +1,34 @@
+[Unit]
+Description=EduPilot FastAPI Backend
+After=network.target postgresql.service redis.service
+Wants=postgresql.service redis.service
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/edupilot/services
+EnvironmentFile=/home/ubuntu/edupilot/services/.env
+
+# Activate venv and run uvicorn
+ExecStart=/home/ubuntu/edupilot/services/venv/bin/uvicorn app.main:app \
+    --host 127.0.0.1 \
+    --port 8000 \
+    --workers 2 \
+    --proxy-headers \
+    --forwarded-allow-ips="*" \
+    --log-level info
+
+# Restart on crash, but not on clean stop
+Restart=on-failure
+RestartSec=5
+StartLimitIntervalSec=60
+StartLimitBurst=3
+
+# Logging — view with: journalctl -u edupilot -f
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=edupilot
+
+[Install]
+WantedBy=multi-user.target

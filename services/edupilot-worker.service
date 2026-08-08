@@ -1,0 +1,36 @@
+[Unit]
+Description=EduPilot Celery Worker (scraping + document verification)
+After=network.target postgresql.service redis.service edupilot.service
+Wants=postgresql.service redis.service
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/edupilot/services
+EnvironmentFile=/home/ubuntu/edupilot/services/.env
+
+# concurrency=2 is safe on t3.small — Playwright opens one browser at a time
+# per task, so two concurrent scrapes = ~600MB extra RAM peak
+ExecStart=/home/ubuntu/edupilot/services/venv/bin/celery \
+    -A app.tasks \
+    worker \
+    --loglevel=info \
+    --concurrency=2 \
+    --max-tasks-per-child=10
+
+# Kill gracefully — let running scrapers finish (Playwright needs time to close)
+KillSignal=SIGTERM
+TimeoutStopSec=60
+
+Restart=on-failure
+RestartSec=10
+StartLimitIntervalSec=120
+StartLimitBurst=3
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=edupilot-worker
+
+[Install]
+WantedBy=multi-user.target

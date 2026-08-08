@@ -1,0 +1,35 @@
+[Unit]
+Description=EduPilot Celery Beat Scheduler (daily ingestion + deadline scans)
+After=network.target redis.service edupilot-worker.service
+Wants=redis.service
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/edupilot/services
+EnvironmentFile=/home/ubuntu/edupilot/services/.env
+
+# Beat uses the default file-based scheduler (no django_celery_beat needed)
+# Schedule defined in app/tasks.py:
+#   - run_daily_ingestion  → 2:00 AM daily  (Playwright scrapers run here)
+#   - poll_data_sources    → 2:00 AM daily  (connector orchestrator)
+#   - scan_deadline_reminders → every hour  (lightweight DB scan, no scraping)
+ExecStart=/home/ubuntu/edupilot/services/venv/bin/celery \
+    -A app.tasks \
+    beat \
+    --loglevel=info \
+    --schedule=/home/ubuntu/edupilot/services/celerybeat-schedule
+
+KillSignal=SIGTERM
+TimeoutStopSec=30
+
+Restart=on-failure
+RestartSec=10
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=edupilot-beat
+
+[Install]
+WantedBy=multi-user.target

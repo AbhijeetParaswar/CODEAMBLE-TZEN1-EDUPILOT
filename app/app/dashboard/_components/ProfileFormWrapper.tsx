@@ -35,23 +35,30 @@ function ProfileSkeleton() {
 export default function ProfileFormWrapper({
   userId,
   userEmail,
+  token,
 }: {
   userId: string;
   userEmail: string;
+  token: string;
 }) {
   const [profile, setProfile] = useState<StudentProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    getProfile(userId, userEmail)
+    getProfile(userId, userEmail, token)
       .then((data) => setProfile(data))
-      .catch(() => setProfile(null)) 
+      .catch(() => setProfile(null))
       .finally(() => setLoading(false));
-  }, [userId, userEmail]);
+  }, [userId, userEmail, token]);
 
   if (loading) return <ProfileSkeleton />;
 
   return (
-    <ProfileForm initial={profile} userId={userId} userEmail={userEmail} />
+    <ProfileForm
+      initial={profile}
+      userId={userId}
+      userEmail={userEmail}
+      token={token}
+    />
   );
 }

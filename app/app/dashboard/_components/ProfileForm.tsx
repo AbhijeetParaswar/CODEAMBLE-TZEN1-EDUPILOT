@@ -157,15 +157,19 @@ const INTEREST_SUGGESTIONS = [
   "FinTech",
 ];
 
-
 interface Props {
   initial: StudentProfile | null;
   userId: string;
   userEmail: string;
+  token: string;
 }
 
-
-export default function ProfileForm({ initial, userId, userEmail }: Props) {
+export default function ProfileForm({
+  initial,
+  userId,
+  userEmail,
+  token,
+}: Props) {
   const router = useRouter();
   const [form, setForm] = useState<StudentProfile>(initial ?? {});
   const [saving, setSaving] = useState(false);
@@ -189,7 +193,6 @@ export default function ProfileForm({ initial, userId, userEmail }: Props) {
   );
 
   const pref = (key: string) => (form.preferences ?? {})[key];
-
 
   function addTag(key: keyof StudentProfile, value: string) {
     if (!value.trim()) return;
@@ -225,7 +228,7 @@ export default function ProfileForm({ initial, userId, userEmail }: Props) {
     setSaving(true);
     setMessage(null);
     try {
-      await updateProfile(userId, form, userEmail);
+      await updateProfile(userId, form, userEmail, token);
       setMessage({ text: "Profile saved successfully.", ok: true });
       router.refresh();
     } catch (err) {
@@ -416,6 +419,7 @@ export default function ProfileForm({ initial, userId, userEmail }: Props) {
             storedName={(pref("resume_url") as string) ?? ""}
             onUrlSaved={(url) => setPref("resume_url", url)}
             userId={userId}
+            token={token}
             docType="resume"
           />
           <label className="flex flex-col gap-1">
@@ -447,6 +451,7 @@ export default function ProfileForm({ initial, userId, userEmail }: Props) {
             onUrlSaved={(url) => setPref("cover_letter_url", url)}
             userId={userId}
             docType="cover_letter"
+            token={token}
             optional
           />
         </div>
@@ -556,7 +561,6 @@ function Select({
   );
 }
 
-
 function TagInput({
   label,
   hint,
@@ -650,6 +654,7 @@ function FileOrLink({
   onUrlSaved,
   userId,
   docType,
+  token,
   optional = false,
 }: {
   label: string;
@@ -659,6 +664,7 @@ function FileOrLink({
   onUrlSaved: (url: string) => void;
   userId: string;
   docType: string;
+  token: string;
   optional?: boolean;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -683,6 +689,7 @@ function FileOrLink({
       const res = await fetch(`${base}/api/v1/documents/upload`, {
         method: "POST",
         body: form,
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       if (res.ok) {
         const data = await res.json();

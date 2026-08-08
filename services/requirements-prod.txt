@@ -1,0 +1,67 @@
+# ── Web Framework ─────────────────────────────────────────────────────────────
+fastapi>=0.115,<1.0
+uvicorn[standard]>=0.30
+pydantic>=2.8,<3.0
+pydantic-settings>=2.0
+python-multipart>=0.0.9
+
+# ── Security & Auth ───────────────────────────────────────────────────────────
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.4
+cryptography>=43.0
+
+# ── Database ──────────────────────────────────────────────────────────────────
+sqlalchemy>=2.0
+alembic>=1.13
+psycopg2-binary>=2.9.12
+
+# ── AI / LLM ──────────────────────────────────────────────────────────────────
+langchain>=0.3
+langchain-community>=0.3
+langchain-groq>=0.2          # Groq replaces Ollama
+langgraph>=0.2
+groq>=0.9
+
+# ── Vector DB & Embeddings ────────────────────────────────────────────────────
+chromadb>=0.5
+sentence-transformers>=3.0
+
+# ── LLM Providers (eval judge) ───────────────────────────────────────────────
+google-genai>=1.0
+
+# ── Document Processing ───────────────────────────────────────────────────────
+pdfplumber>=0.11
+pytesseract>=0.3.13
+Pillow>=11.0
+pypdf>=5.0
+unstructured>=0.16
+
+# ── Web Scraping ─────────────────────────────────────────────────────────────
+beautifulsoup4>=4.13
+requests>=2.32
+lxml>=5.3
+playwright>=1.50          # needed for Internshala, Unstop, Devfolio, MLH scrapers
+
+# ── Background Tasks ──────────────────────────────────────────────────────────
+celery>=5.4
+redis>=5.2
+
+# ── Notifications ─────────────────────────────────────────────────────────────
+sendgrid>=6.11
+twilio>=9.3
+
+# ── Utilities ─────────────────────────────────────────────────────────────────
+python-dotenv>=1.0
+httpx>=0.28
+tqdm>=4.67
+orjson>=3.10
+numpy>=1.26
+pandas>=2.2
+scikit-learn>=1.5
+
+# ── EXCLUDED from prod (too heavy / not needed) ───────────────────────────────
+# torch, transformers, accelerate  → removed (no local ML inference)
+# shap                             → removed (no explainability needed in prod)
+# playwright                       → removed (scrapers are best-effort)
+# ollama                           → removed (replaced by Groq)
+# openai                           → removed (not used in prod path)

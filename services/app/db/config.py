@@ -55,7 +55,11 @@ class Settings(BaseSettings):
     encryption_key_master: str = ""  # Base64 encoded key for document encryption
     audit_log_retention_days: int = 1095  # 3 years per DPDP Act
 
-    # Ollama Configuration
+    # Groq Configuration (replaces Ollama in production)
+    groq_api_key: str = ""
+    groq_model: str = "llama-3.3-70b-versatile"
+
+    # Ollama Configuration (kept for local dev / document_identifier fallback)
     ollama_base_url: str = "http://localhost:11434"
     ollama_model: str = "llama3.2:3b"
     ollama_temperature: float = 0.7

@@ -104,20 +104,20 @@ async function apiFetch<T>(
   options: RequestInit & {
     userId?: string;
     userEmail?: string;
+    token?: string;
     next?: { revalidate: number };
   } = {},
 ): Promise<T> {
-  const { userId, userEmail, next, ...fetchOptions } = options;
+  const { userId, userEmail, token, next, ...fetchOptions } = options;
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...(fetchOptions.headers as Record<string, string>),
   };
   if (userId) headers["X-User-Id"] = userId;
   if (userEmail) headers["X-User-Email"] = userEmail;
+  if (token) headers["Authorization"] = `Bearer ${token}`;
 
   const controller = new AbortController();
-  // First semantic request may need to warm the local embedding model. Three
-  // seconds causes a working backend to be misreported as unavailable.
   const timeout = setTimeout(() => controller.abort(), 15_000);
 
   try {
@@ -147,13 +147,14 @@ export function getRecommendations(
   userId: string,
   userEmail?: string,
   query?: string,
+  token?: string,
 ) {
   const params = new URLSearchParams();
   if (query) params.set("query", query);
   params.set("limit", "10");
   return apiFetch<RecommendationResponse>(
     `/api/v1/scholarships/recommendations?${params}`,
-    { userId, userEmail },
+    { userId, userEmail, token },
   );
 }
 
@@ -198,13 +199,14 @@ export function getInternshipRecommendations(
   userId: string,
   userEmail?: string,
   query?: string,
+  token?: string,
 ) {
   const params = new URLSearchParams();
   if (query) params.set("query", query);
   params.set("limit", "30");
   return apiFetch<InternshipRecommendationResponse>(
     `/api/v1/internships/recommendations?${params}`,
-    { userId, userEmail },
+    { userId, userEmail, token },
   );
 }
 
@@ -212,26 +214,34 @@ export function saveInternship(
   userId: string,
   opportunityId: string,
   userEmail?: string,
+  token?: string,
 ) {
   return apiFetch<Application>(`/api/v1/internships/applications`, {
     method: "POST",
     body: JSON.stringify({ opportunity_id: opportunityId, saved: true }),
     userId,
     userEmail,
+    token,
   });
 }
 
-export function getDashboardStats(userId: string, userEmail?: string) {
+export function getDashboardStats(
+  userId: string,
+  userEmail?: string,
+  token?: string,
+) {
   return apiFetch<DashboardStats>(`/api/v1/scholarships/dashboard`, {
     userId,
     userEmail,
+    token,
   });
 }
 
-export function getProfile(userId: string, userEmail?: string) {
+export function getProfile(userId: string, userEmail?: string, token?: string) {
   return apiFetch<StudentProfile | null>(`/api/v1/profile`, {
     userId,
     userEmail,
+    token,
   });
 }
 
@@ -239,19 +249,26 @@ export function updateProfile(
   userId: string,
   data: StudentProfile,
   userEmail?: string,
+  token?: string,
 ) {
   return apiFetch<StudentProfile>(`/api/v1/profile`, {
     method: "PUT",
     body: JSON.stringify(data),
     userId,
     userEmail,
+    token,
   });
 }
 
-export function getApplications(userId: string, userEmail?: string) {
+export function getApplications(
+  userId: string,
+  userEmail?: string,
+  token?: string,
+) {
   return apiFetch<Application[]>(`/api/v1/scholarships/applications`, {
     userId,
     userEmail,
+    token,
   });
 }
 
@@ -259,19 +276,26 @@ export function saveOpportunity(
   userId: string,
   opportunityId: string,
   userEmail?: string,
+  token?: string,
 ) {
   return apiFetch<Application>(`/api/v1/scholarships/applications`, {
     method: "POST",
     body: JSON.stringify({ opportunity_id: opportunityId, saved: true }),
     userId,
     userEmail,
+    token,
   });
 }
 
-export function getNotifications(userId: string, userEmail?: string) {
+export function getNotifications(
+  userId: string,
+  userEmail?: string,
+  token?: string,
+) {
   return apiFetch<Notification[]>(`/api/v1/notifications`, {
     userId,
     userEmail,
+    token,
   });
 }
 
@@ -279,18 +303,24 @@ export function markNotificationRead(
   userId: string,
   id: string,
   userEmail?: string,
+  token?: string,
 ) {
   return apiFetch<{ ok: boolean }>(`/api/v1/notifications/${id}/read`, {
     method: "POST",
     userId,
     userEmail,
+    token,
   });
 }
 
-export function getConsents(userId: string, userEmail?: string) {
+export function getConsents(
+  userId: string,
+  userEmail?: string,
+  token?: string,
+) {
   return apiFetch<
     { purpose: string; granted: boolean; granted_at: string | null }[]
-  >(`/api/v1/consent`, { userId, userEmail });
+  >(`/api/v1/consent`, { userId, userEmail, token });
 }
 
 export function setConsent(
@@ -298,12 +328,14 @@ export function setConsent(
   purpose: string,
   granted: boolean,
   userEmail?: string,
+  token?: string,
 ) {
   return apiFetch(`/api/v1/consent`, {
     method: "POST",
     body: JSON.stringify({ purpose, granted }),
     userId,
     userEmail,
+    token,
   });
 }
 
@@ -330,6 +362,7 @@ export function searchOpportunitiesSemantic(
   category?: string,
   topK = 20,
   minScore = 0.1,
+  token?: string,
 ) {
   const params = new URLSearchParams({
     q: query,
@@ -339,6 +372,7 @@ export function searchOpportunitiesSemantic(
   if (category) params.set("category", category);
   return apiFetch<SemanticSearchResponse>(
     `/api/v1/search/opportunities?${params}`,
+    { token },
   );
 }
 
@@ -357,6 +391,7 @@ export async function uploadDocument(
   documentType: string,
   file: File,
   applicationId?: string,
+  token?: string,
 ): Promise<DocumentStatus> {
   const form = new FormData();
   form.append("user_id", userId);
@@ -364,16 +399,22 @@ export async function uploadDocument(
   form.append("file", file);
   if (applicationId) form.append("application_id", applicationId);
 
+  const headers: Record<string, string> = {};
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
   const res = await fetch(`${API_BASE}/api/v1/documents/upload`, {
     method: "POST",
     body: form,
+    headers,
   });
   if (!res.ok) throw new Error(`Upload failed: ${res.status}`);
   return res.json();
 }
 
-export function getDocumentStatus(documentId: string) {
-  return apiFetch<DocumentStatus>(`/api/v1/documents/${documentId}/status`);
+export function getDocumentStatus(documentId: string, token?: string) {
+  return apiFetch<DocumentStatus>(`/api/v1/documents/${documentId}/status`, {
+    token,
+  });
 }
 
 export type FeedbackPayload = {
@@ -391,10 +432,11 @@ export function submitFeedback(
   userId: string,
   payload: FeedbackPayload,
   userEmail?: string,
+  token?: string,
 ) {
   return apiFetch<{ feedback_type: string; submitted_at: string }>(
     `/api/v1/feedback/`,
-    { method: "POST", body: JSON.stringify(payload), userId, userEmail },
+    { method: "POST", body: JSON.stringify(payload), userId, userEmail, token },
   );
 }
 
@@ -407,10 +449,14 @@ export type NotificationPreferences = {
   status_updates: boolean;
 };
 
-export function getNotificationPreferences(userId: string, userEmail?: string) {
+export function getNotificationPreferences(
+  userId: string,
+  userEmail?: string,
+  token?: string,
+) {
   return apiFetch<NotificationPreferences>(
     `/api/v1/notifications/preferences`,
-    { userId, userEmail },
+    { userId, userEmail, token },
   );
 }
 
@@ -418,6 +464,7 @@ export function updateNotificationPreferences(
   userId: string,
   prefs: NotificationPreferences,
   userEmail?: string,
+  token?: string,
 ) {
   return apiFetch<NotificationPreferences>(
     `/api/v1/notifications/preferences`,
@@ -426,6 +473,7 @@ export function updateNotificationPreferences(
       body: JSON.stringify(prefs),
       userId,
       userEmail,
+      token,
     },
   );
 }
@@ -442,15 +490,16 @@ export type PlatformAnalytics = {
   timestamp: string;
 };
 
-export function getAdmingetAdminAnalytics(userId: string, userEmail?: string) {
+export function getAdminAnalytics(
+  userId: string,
+  userEmail?: string,
+  token?: string,
+) {
   return apiFetch<PlatformAnalytics>(`/api/v1/admin/analytics`, {
     userId,
     userEmail,
+    token,
   });
-}
-
-export function getAdminAnalytics(userId: string, userEmail?: string) {  // 👈 fixed name
-  return apiFetch<PlatformAnalytics>(`/api/v1/admin/analytics`, { userId, userEmail });
 }
 
 export type ConnectorStatusItem = {
@@ -462,10 +511,14 @@ export type ConnectorStatusItem = {
   last_error: string | null;
 };
 
-export function getConnectorStatuses(userId: string, userEmail?: string) {
+export function getConnectorStatuses(
+  userId: string,
+  userEmail?: string,
+  token?: string,
+) {
   return apiFetch<{ connectors: ConnectorStatusItem[]; count: number }>(
     `/api/v1/admin/connectors/status`,
-    { userId, userEmail },
+    { userId, userEmail, token },
   );
 }
 
@@ -473,11 +526,12 @@ export function triggerConnectorRun(
   userId: string,
   connectorName?: string,
   userEmail?: string,
+  token?: string,
 ) {
   const params = connectorName ? `?connector_name=${connectorName}` : "";
   return apiFetch<{ status: string; results: unknown }>(
     `/api/v1/admin/connectors/trigger${params}`,
-    { method: "POST", userId, userEmail },
+    { method: "POST", userId, userEmail, token },
   );
 }
 
@@ -496,10 +550,15 @@ export type DataFreshness = {
   }[];
 };
 
-export function getDataFreshness(userId: string, userEmail?: string) {
+export function getDataFreshness(
+  userId: string,
+  userEmail?: string,
+  token?: string,
+) {
   return apiFetch<DataFreshness>(`/api/v1/admin/data-freshness`, {
     userId,
     userEmail,
+    token,
   });
 }
 
@@ -513,10 +572,15 @@ export type AccuracyMetrics = {
   };
 };
 
-export function getAccuracyMetrics(userId: string, userEmail?: string) {
+export function getAccuracyMetrics(
+  userId: string,
+  userEmail?: string,
+  token?: string,
+) {
   return apiFetch<AccuracyMetrics>(`/api/v1/admin/accuracy-metrics`, {
     userId,
     userEmail,
+    token,
   });
 }
 
@@ -555,6 +619,7 @@ export function getHackathons(
     deadline_days?: number;
     limit?: number;
   },
+  token?: string,
 ) {
   const p = new URLSearchParams();
   if (params?.query) p.set("query", params.query);
@@ -569,5 +634,6 @@ export function getHackathons(
   return apiFetch<HackathonListResponse>(`/api/v1/hackathons?${p}`, {
     userId,
     userEmail,
+    token,
   });
 }
