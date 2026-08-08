@@ -1,0 +1,5 @@
+/.servicesEnv
+venv/
+.env
+.env.*
+!.env.example
