@@ -119,7 +119,7 @@ class ChatbotAgent:
             state["retrieved_docs"] = []
             return state
 
-        # Retrieve relevant documents if vector search is available
+        # Balanced retrieval with natural filtering
         if self.vector_search_available and query:
             try:
                 context_docs = self.rag.retrieve_for_profile(
@@ -137,13 +137,29 @@ class ChatbotAgent:
 
     @staticmethod
     def _is_social_message(message: str) -> bool:
-        """Detect short acknowledgements that do not need scholarship retrieval."""
+        """Detect social messages, greetings, and casual conversation that don't need scholarship retrieval."""
         normalized = re.sub(r"[^\w\s\u0900-\u097f]", "", message.lower()).strip()
+        
+        # Short greetings and acknowledgments
         social_messages = {
-            "thanks", "thank you", "thankyou", "thx", "ty", "hello", "hi",
-            "धन्यवाद", "धन्यवाद तुम्हाला", "आभार", "धन्यवाद आहे",
+            "hi", "hello", "hey", "good morning", "good afternoon", "good evening",
+            "thanks", "thank you", "thankyou", "thx", "ty", "ok", "okay", "cool",
+            "nice", "great", "awesome", "perfect", "got it", "understood",
+            # Hindi/Marathi greetings
+            "नमस्ते", "हैलो", "हाय", "धन्यवाद", "धन्यवाद तुम्हाला", "आभार", 
+            "ठीक आहे", "समजले", "छान"
         }
-        return normalized in social_messages
+        
+        # Check for exact matches with short messages (under 6 words)
+        words = normalized.split()
+        if len(words) <= 5:
+            if normalized in social_messages:
+                return True
+            # Check if it's just a greeting with extra words like "hi there" or "hello how are you"
+            if any(greeting in words for greeting in ["hi", "hello", "hey", "नमस्ते", "हैलो"]):
+                return True
+        
+        return False
 
     @staticmethod
     def _needs_opportunity_retrieval(message: str) -> bool:
@@ -175,31 +191,37 @@ class ChatbotAgent:
         return any(term in normalized for term in opportunity_terms)
 
     def _format_context(self, docs: List[Dict[str, Any]]) -> str:
-        """Format retrieved documents as context for the LLM.
-        
-        Concise format to reduce token usage and keep model focused.
-        """
+        """Format retrieved documents in a natural, readable way."""
         if not docs:
             return ""
 
         context_parts = []
         for i, doc in enumerate(docs, 1):
-            amount_str = f"₹{doc['amount']:,}/year" if doc.get("amount") else "Amount not specified"
-            deadline_str = doc.get('deadline') or "No deadline"
+            title = doc.get('title', 'Scholarship')
             
-            # Truncate long descriptions to 200 chars to prevent context window bloat
+            # Natural formatting
+            entry = f"{i}. **{title}**\n"
+            
+            # Description
             description = doc.get('description', '')
-            if len(description) > 200:
-                description = description[:197] + "..."
+            if description:
+                if len(description) > 300:
+                    description = description[:297] + "..."
+                entry += f"   {description}\n"
             
-            entry = (
-                f"{i}. {doc['title']}\n"
-                f"   {description}\n"
-                f"   Amount: {amount_str} | Deadline: {deadline_str}"
-            )
+            # Amount
+            if doc.get("amount"):
+                entry += f"   Amount: ₹{doc['amount']:,} per year\n"
+            
+            # Deadline
+            if doc.get('deadline'):
+                entry += f"   Deadline: {doc['deadline']}\n"
+            
+            # Application URL
             if doc.get("source_url"):
-                entry += f" | Apply: {doc['source_url']}"
-            context_parts.append(entry)
+                entry += f"   Apply: {doc['source_url']}\n"
+            
+            context_parts.append(entry.strip())
 
         return "\n\n".join(context_parts)
 
@@ -235,7 +257,7 @@ class ChatbotAgent:
         return state
 
     def _build_system_prompt(self, user_profile: Dict[str, Any], context: str, long_term_memory: str = "") -> str:
-        """Build system prompt with helpful, conversational approach."""
+        """Build system prompt with strict adherence to retrieved context to improve faithfulness."""
         current_date = datetime.now().strftime("%B %d, %Y")
 
         # Build concise profile summary
@@ -257,27 +279,35 @@ class ChatbotAgent:
         # Include long-term memory
         memory_str = f"\n\nWhat I remember about you:\n{long_term_memory}" if long_term_memory else ""
 
-        # Detailed, comprehensive prompt that encourages thorough responses
-        system_prompt = f"""You are EduPilot, a friendly AI assistant helping Indian students with scholarships, internships, and educational opportunities.
+        # Balanced system prompt - faithful yet helpful
+        system_prompt = f"""You are EduPilot, a friendly and knowledgeable AI assistant helping Indian students find scholarships, internships, and educational opportunities.
 
 Today: {current_date}
 Student Profile: {profile_str}{memory_str}
 
-SCHOLARSHIP DATA:
-{context if context else "No specific data retrieved for this query."}
+AVAILABLE SCHOLARSHIP INFORMATION:
+{context if context else "I don't have specific scholarship data for this query right now."}
 
-INSTRUCTIONS:
-- Provide DETAILED, COMPREHENSIVE responses
-- When you have scholarship data, share ALL details: amounts, eligibility criteria, deadlines, application procedures, required documents
-- Present information in well-organized tables or lists
-- Be thorough - students need complete information to make decisions
-- Include ALL important details - never summarize or skip information
-- Use bullet points, tables, and formatting to make information clear
-- If you don't have specific data, provide detailed general guidance with examples
-- Remember information from our conversation
+RESPONSE GUIDELINES:
+- Use the available scholarship information as your primary source for specific details
+- When providing amounts, deadlines, or eligibility criteria, reference the specific scholarship and state if the information comes from the available data
+- If specific details aren't available, acknowledge this clearly: "I don't have the specific [amount/deadline/criteria] information for this scholarship"
+- Be helpful and comprehensive with the information you do have
+- For greetings and casual conversation, respond appropriately and briefly
+- Organize scholarship information with clear scholarship names as headers
+
+ACCURACY REQUIREMENTS:
+- Don't invent specific amounts, dates, or criteria not in the available information
+- When uncertain about details, clearly indicate the limitation
+- Always distinguish between information from the available data vs general guidance
+
+RESPONSE STYLE:
+- Keep responses proportional to the question type
+- Use clear formatting for scholarship details
+- Be encouraging and supportive
 - Answer in the same language as the student
 
-IMPORTANT: Your responses should be COMPLETE and THOROUGH. Students rely on your detailed guidance. Don't hold back - provide all the information they need."""
+Remember: Be helpful and thorough with available information while being honest about limitations."""
 
         return system_prompt
 
@@ -539,18 +569,30 @@ async def query_scholarship_with_context(question: str) -> Dict[str, Any]:
         if not contexts:
             contexts = ["No context retrieved."]
 
-        # --- Context string for generation ---
+        # --- Natural context string for generation ---
         context_parts = []
         for i, doc in enumerate(retrieved_docs, 1):
-            amount_str = f"₹{doc['amount']:,}/year" if doc.get("amount") else "Amount not specified"
-            deadline_str = doc.get('deadline') or "No deadline"
-            description = doc.get('description', '')[:200]  # Truncate to 200 chars
+            title = doc.get('title', 'Scholarship')
             
-            context_parts.append(
-                f"{i}. {doc['title']}\n"
-                f"   {description}\n"
-                f"   Amount: {amount_str} | Deadline: {deadline_str}"
-            )
+            entry = f"{i}. **{title}**\n"
+            
+            # Description
+            description = doc.get('description', '')
+            if description:
+                if len(description) > 300:
+                    description = description[:297] + "..."
+                entry += f"   {description}\n"
+            
+            # Amount
+            if doc.get("amount"):
+                entry += f"   Amount: ₹{doc['amount']:,} per year\n"
+            
+            # Deadline
+            if doc.get('deadline'):
+                entry += f"   Deadline: {doc['deadline']}\n"
+            
+            context_parts.append(entry.strip())
+            
         context_str = "\n\n".join(context_parts) if retrieved_docs else ""
 
         # --- Generation ---

@@ -112,11 +112,7 @@ export default function Sidebar() {
       </div>
       <nav className="flex flex-col gap-1 px-3 py-4 flex-1">
         {NAV.map((item) => {
-          if (
-            (item.href.includes("/admin") || item.href.includes("/eval")) &&
-            !isAdmin
-          )
-            return null;
+          if (item.href.includes("/admin") && !isAdmin) return null;
           const isActive = pathname === item.href;
           return (
             <Link
