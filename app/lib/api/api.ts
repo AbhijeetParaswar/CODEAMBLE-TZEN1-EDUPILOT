@@ -116,7 +116,9 @@ async function apiFetch<T>(
   if (userEmail) headers["X-User-Email"] = userEmail;
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 3000);
+  // First semantic request may need to warm the local embedding model. Three
+  // seconds causes a working backend to be misreported as unavailable.
+  const timeout = setTimeout(() => controller.abort(), 15_000);
 
   try {
     const res = await fetch(`${API_BASE}${path}`, {

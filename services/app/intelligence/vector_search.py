@@ -7,16 +7,35 @@ Satisfies Requirements: 15.4, 15.5, 15.6, 15.7
 """
 
 import logging
+import re
+from functools import lru_cache
 from typing import Dict, Any, List, Optional
 from datetime import datetime
 import numpy as np
 from sqlalchemy.orm import Session
 
 from app.db.models import Opportunity, OpportunityCategory
-from app.intelligence.embeddings import EmbeddingService
+from app.intelligence.embeddings import EmbeddingService, get_embedding_model
 from app.db.session import SessionLocal
 
 logger = logging.getLogger(__name__)
+
+
+@lru_cache(maxsize=4096)
+def _cached_embedding(text: str) -> tuple[float, ...]:
+    """Embed each stable search document at most once per API process."""
+    return tuple(get_embedding_model().generate_embedding(text))
+
+
+def _opportunity_search_text(opp: Opportunity) -> str:
+    """Produce a small, useful search document from often noisy scraped data."""
+    description = re.sub(r"\s+", " ", opp.description or "").strip()
+    # Several sources store a whole rendered web page in ``description``.
+    # Limiting it avoids spending seconds tokenising navigation/footer repeats.
+    description = description[:1_500]
+    tags = " ".join(str(tag) for tag in (opp.tags or []))
+    rules = " ".join(f"{key} {value}" for key, value in (opp.eligibility_rules or {}).items())
+    return " ".join(part for part in (opp.title, description, tags, rules) if part)
 
 
 class VectorSearchService:
@@ -27,7 +46,7 @@ class VectorSearchService:
     
     def __init__(self, db_session: Session):
         self.db = db_session
-        self.embedding_service = EmbeddingService()
+        self.embedding_service = get_embedding_model()
 
     @staticmethod
     def cosine_similarity(vec1: List[float], vec2: List[float]) -> float:
@@ -60,7 +79,7 @@ class VectorSearchService:
         if not query or not query.strip():
             return []
             
-        query_vec = self.embedding_service.generate_embedding(query)
+        query_vec = _cached_embedding(query.strip())
         
         # Query opportunities from DB
         q = self.db.query(Opportunity)
@@ -71,6 +90,7 @@ class VectorSearchService:
                 return []
         if active_only:
             q = q.filter(
+                Opportunity.is_active.is_(True),
                 (Opportunity.deadline.is_(None)) | (Opportunity.deadline >= datetime.utcnow())
             )
             
@@ -79,8 +99,7 @@ class VectorSearchService:
         
         for opp in opportunities:
             # Generate or retrieve opportunity embedding
-            opp_text = f"{opp.title}. {opp.description or ''}"
-            opp_vec = self.embedding_service.generate_embedding(opp_text)
+            opp_vec = _cached_embedding(_opportunity_search_text(opp))
             
             sim_score = self.cosine_similarity(query_vec, opp_vec)
             

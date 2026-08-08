@@ -440,7 +440,7 @@ export default function ChatPage() {
               AI Chat Assistant
             </h1>
             <p className="font-mono text-[10px] text-gray-400 dark:text-[#6B7280] tracking-wide transition-colors duration-500">
-              Ollama + LangGraph • student copilot
+              GPT-OSS 120B Cloud • student copilot
             </p>
           </div>
         </div>

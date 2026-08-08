@@ -9,6 +9,7 @@ Satisfies Requirements: 15.1, 15.2, 15.3
 import hashlib
 import logging
 import re
+from functools import lru_cache
 from typing import List, Dict, Any, Optional
 import numpy as np
 
@@ -98,6 +99,7 @@ class EmbeddingService:
 # ---------------------------------------------------------------------------
 # Helper for backward‑compatible import
 # ---------------------------------------------------------------------------
+@lru_cache(maxsize=1)
 def get_embedding_model() -> EmbeddingService:
     """Return a ready‑to‑use :class:`EmbeddingService` instance.
 
@@ -106,4 +108,6 @@ def get_embedding_model() -> EmbeddingService:
     keeps the public API stable without altering the existing ``EmbeddingService``
     implementation.
     """
+    # Loading a transformer can take several seconds. Keep one model per API
+    # process instead of rebuilding it for every search request.
     return EmbeddingService()
