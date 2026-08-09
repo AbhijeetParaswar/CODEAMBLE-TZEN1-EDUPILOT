@@ -441,10 +441,11 @@ export default function ChatPage() {
   };
 
   return (
-    <div className="flex h-full flex-col bg-white dark:bg-[#08090E] text-gray-900 dark:text-[#F0F4FF] transition-colors duration-500">
-      <div className="flex items-center justify-between border-b border-black/10 dark:border-white/8 px-4 sm:px-6 py-3 bg-white dark:bg-[#08090E] transition-colors duration-500 fixed top-25 left-60 right-0">
-        <div className="flex items-center gap-3 transition-colors duration-500">
-          <div className="w-8 h-8 bg-[#0C65D2]/10 border border-[#0C65D2]/20 flex items-center justify-center text-[#0C65D2] shrink-0 transition-colors duration-500">
+    <div className="flex h-full flex-col bg-white dark:bg-[#08090E] text-gray-900 dark:text-[#F0F4FF] transition-colors duration-500 overflow-hidden">
+      {/* ── Header ── sticky, no fixed offsets */}
+      <div className="flex items-center justify-between border-b border-black/10 dark:border-white/8 px-4 sm:px-6 py-3 bg-white dark:bg-[#08090E] transition-colors duration-500 shrink-0">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 bg-[#0C65D2]/10 border border-[#0C65D2]/20 flex items-center justify-center text-[#0C65D2] shrink-0">
             <Bot className="h-4 w-4" />
           </div>
           <div>
@@ -457,7 +458,7 @@ export default function ChatPage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2 transition-colors duration-500">
+        <div className="flex items-center gap-2">
           <div className="relative">
             <select
               value={threadId}
@@ -472,7 +473,7 @@ export default function ChatPage() {
                 </option>
               ))}
             </select>
-            <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400 dark:text-[#6B7280] transition-colors duration-500" />
+            <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400 dark:text-[#6B7280]" />
           </div>
 
           {threadId && (
@@ -492,9 +493,10 @@ export default function ChatPage() {
         </div>
       </div>
 
+      {/* ── Error banner ── */}
       {error && (
-        <div className="border-b border-red-500/20 bg-red-500/5 px-4 py-2 flex items-center justify-between">
-          <span className="font-mono text-[11px] text-red-500 flex items-center gap-2 transition-colors duration-500">
+        <div className="border-b border-red-500/20 bg-red-500/5 px-4 py-2 flex items-center justify-between shrink-0">
+          <span className="font-mono text-[11px] text-red-500 flex items-center gap-2">
             <MessageSquare className="h-3.5 w-3.5 shrink-0" />
             {error}
           </span>
@@ -508,16 +510,17 @@ export default function ChatPage() {
         </div>
       )}
 
-      <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-6 space-y-5 transition-colors duration-500">
+      {/* ── Messages ── flex-1 + min-h-0 is the key to making this scroll correctly */}
+      <div className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 py-6 space-y-5 transition-colors duration-500">
         {messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-center transition-colors duration-500">
-            <div className="w-12 h-12 bg-[#0C65D2]/10 border border-[#0C65D2]/20 flex items-center justify-center text-[#0C65D2] mb-5 transition-colors duration-500">
+          <div className="flex flex-col items-center justify-center h-full text-center">
+            <div className="w-12 h-12 bg-[#0C65D2]/10 border border-[#0C65D2]/20 flex items-center justify-center text-[#0C65D2] mb-5">
               <MessageSquare className="h-5 w-5" />
             </div>
             <h3 className="font-syne text-lg font-extrabold text-gray-900 dark:text-[#F0F4FF] mb-2">
               Start a conversation
             </h3>
-            <p className="font-mono text-[11px] text-gray-400 dark:text-[#6B7280] max-w-sm leading-relaxed mb-6 transition-colors duration-500">
+            <p className="font-mono text-[11px] text-gray-400 dark:text-[#6B7280] max-w-sm leading-relaxed mb-6">
               Ask about scholarships, internships, eligibility, applications, or
               anything on your student journey.
             </p>
@@ -566,7 +569,7 @@ export default function ChatPage() {
         )}
 
         {isLoading && (
-          <div className="flex items-start gap-3 transition-colors duration-500">
+          <div className="flex items-start gap-3">
             <div className="w-7 h-7 bg-[#0C65D2]/10 border border-[#0C65D2]/20 flex items-center justify-center text-[#0C65D2] shrink-0">
               <Bot className="h-3.5 w-3.5" />
             </div>
@@ -580,7 +583,8 @@ export default function ChatPage() {
         )}
       </div>
 
-      <div className="border-t border-black/10 dark:border-white/8 px-4 sm:px-6 py-1.5 bg-white dark:bg-[#08090E] transition-colors duration-500 fixed bottom-0 left-60 right-0">
+      {/* ── Footer ── shrink-0, no fixed offsets */}
+      <div className="border-t border-black/10 dark:border-white/8 px-4 sm:px-6 py-3 bg-white dark:bg-[#08090E] transition-colors duration-500 shrink-0">
         <div className="max-w-4xl mx-auto">
           {selectedFile && (
             <div className="mb-2 flex w-fit items-center gap-2 border border-[#0C65D2]/30 bg-[#0C65D2]/5 px-3 py-1.5">
@@ -599,7 +603,7 @@ export default function ChatPage() {
             </div>
           )}
 
-          <div className="flex items-end gap-2 transition-colors duration-500">
+          <div className="flex items-end gap-2">
             <label
               className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center border border-black/10 dark:border-white/8 text-gray-400 hover:border-[#0C65D2]/40 hover:text-[#0C65D2] transition-all duration-500"
               aria-label="Attach a document"

@@ -14,7 +14,6 @@ import {
   Bell,
   User,
   LogOut,
-  BookOpen,
   Search,
   BarChart3,
   FlaskConical,
@@ -72,23 +71,32 @@ const NAV = [
 ];
 
 export default function Sidebar() {
+  const pathname = usePathname();
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!session?.user?.id) {
+        setLoading(false);
+        return;
+      }
+      const { data } = await supabase
+        .from("profiles")
+        .select("is_admin")
+        .eq("id", session.user.id)
+        .single();
+      setIsAdmin(data?.is_admin === true);
+      setLoading(false);
+    });
+  }, []);
+
   const handleLogout = async () => {
     const supabase = createClient();
     await supabase.auth.signOut();
     window.location.href = "/auth/login";
   };
-  const pathname = usePathname();
-
-  const [userEmail, setUserEmail] = useState<string | null>(null);
-
-  useEffect(() => {
-    const supabase = createClient();
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUserEmail(session?.user?.email || null);
-    });
-  }, []);
-
-  const isAdmin = userEmail === "codexdev25@gmail.com";
 
   return (
     <aside className="hidden lg:flex flex-col w-60 shrink-0 border-r border-black/10 dark:border-white/8 bg-gray-50 dark:bg-[#0F1117] min-h-screen fixed top-0 left-0 bottom-0 transition-all duration-500">
@@ -112,7 +120,9 @@ export default function Sidebar() {
       </div>
       <nav className="flex flex-col gap-1 px-3 py-4 flex-1">
         {NAV.map((item) => {
-          if (item.href.includes("/admin") && !isAdmin) return null;
+          const isAdminRoute =
+            item.href.includes("/admin") || item.href.includes("/eval");
+          if (isAdminRoute && (loading || !isAdmin)) return null;
           const isActive = pathname === item.href;
           return (
             <Link

@@ -72,10 +72,7 @@ app = FastAPI(title=settings.app_name, lifespan=lifespan)
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-    "https://devedupilot.xyz",
-    "https://www.devedupilot.xyz",
-],
+    allow_origins=["https://devedupilot.xyz"],  # no trailing slash!
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
