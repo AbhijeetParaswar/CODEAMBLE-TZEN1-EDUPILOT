@@ -408,11 +408,7 @@ export default function ChatPage() {
       const errorMsg: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-<<<<<<< Updated upstream
-        content: `⚠️ ${errorMessage}`,
-=======
         content: `⚠️ ${errorMessage}. Please make sure the backend is running and accessible at ${API_BASE}`,
->>>>>>> Stashed changes
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, errorMsg]);
