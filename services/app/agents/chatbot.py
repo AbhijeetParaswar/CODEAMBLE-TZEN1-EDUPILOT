@@ -89,7 +89,7 @@ class ChatbotAgent:
         return graph
 
     async def _retrieve_context(self, state: ChatState) -> ChatState:
-        """Retrieve relevant context from vector store using RAG."""
+        """Retrieve relevant context from vector store using RAG with two-stage approach."""
         user_id = state.get("user_id", "")
         messages = state.get("messages", [])
 
@@ -119,14 +119,27 @@ class ChatbotAgent:
             state["retrieved_docs"] = []
             return state
 
-        # Balanced retrieval with natural filtering
+        # Two-stage retrieval system based on query type
         if self.vector_search_available and query:
             try:
-                context_docs = self.rag.retrieve_for_profile(
-                    state["db"], query, state.get("student_profile"), limit=8
-                )
-                state["context"] = self._format_context(context_docs)
-                state["retrieved_docs"] = context_docs
+                # Stage 1: Brief list for eligibility questions
+                if self._is_eligibility_list_query(query):
+                    context_docs = self.rag.retrieve_for_profile(
+                        state["db"], query, state.get("student_profile"), limit=3
+                    )
+                    # Format as BRIEF list (titles + amount only)
+                    state["context"] = self._format_brief_list(context_docs)
+                    state["retrieved_docs"] = context_docs
+                
+                # Stage 2: Full details for specific scholarship queries or follow-up questions
+                else:
+                    context_docs = self.rag.retrieve_for_profile(
+                        state["db"], query, state.get("student_profile"), limit=8
+                    )
+                    # Format with FULL details
+                    state["context"] = self._format_context(context_docs)
+                    state["retrieved_docs"] = context_docs
+                    
             except Exception as e:
                 # Log error but continue without context
                 print(f"RAG retrieval error: {e}")
@@ -134,6 +147,27 @@ class ChatbotAgent:
                 state["retrieved_docs"] = []
 
         return state
+
+    @staticmethod
+    def _is_eligibility_list_query(message: str) -> bool:
+        """Detect queries asking for a list of eligible scholarships (Stage 1 queries)."""
+        normalized = message.lower()
+        list_patterns = [
+            "which scholarship", "what scholarship", "scholarships am i eligible",
+            "scholarships i can apply", "show me scholarship", "list scholarship",
+            "eligible for which", "what can i apply", "recommend scholarship",
+            "suggest scholarship", "scholarship for me", "find scholarship",
+            # Hindi/Marathi
+            "कौनसी शिष्यवृत्ती", "कौन सी स्कॉलरशिप", "योग्य", "पात्र",
+            "शिष्यवृत्ती दाखवा", "स्कॉलरशिप बताओ"
+        ]
+        # Check if it's asking for a list (not asking about specific scholarship)
+        is_list_query = any(pattern in normalized for pattern in list_patterns)
+        # But exclude if asking about specific scholarship details
+        detail_keywords = ["tell me about", "details about", "more about", "explain", "describe", "information about"]
+        is_detail_query = any(keyword in normalized for keyword in detail_keywords)
+        
+        return is_list_query and not is_detail_query
 
     @staticmethod
     def _is_social_message(message: str) -> bool:
@@ -189,6 +223,34 @@ class ChatbotAgent:
             "शिष्यवृत्ती", "स्कॉलरशिप", "छात्रवृत्ति", "वजीफा", "इंटर्नशिप",
         )
         return any(term in normalized for term in opportunity_terms)
+
+    def _format_brief_list(self, docs: List[Dict[str, Any]]) -> str:
+        """Format retrieved documents as a BRIEF list (Stage 1: names + amount only)."""
+        if not docs:
+            return ""
+
+        brief_parts = []
+        for i, doc in enumerate(docs, 1):
+            title = doc.get('title', 'Scholarship')
+            
+            # Extract only essential info
+            entry = f"{i}. **{title}**"
+            
+            # Add amount range if available
+            if doc.get("amount"):
+                entry += f" - Up to ₹{doc['amount']:,}/year"
+            elif doc.get("amount_max"):
+                amount_max = doc.get("amount_max", 0)
+                entry += f" - Up to ₹{amount_max:,}/year"
+            
+            brief_parts.append(entry)
+
+        brief_list = "\n".join(brief_parts)
+        
+        # Add helpful hint for follow-up
+        brief_list += "\n\n💡 Ask me about any specific scholarship for complete details (eligibility, documents, deadlines, etc.)"
+        
+        return brief_list
 
     def _format_context(self, docs: List[Dict[str, Any]]) -> str:
         """Format retrieved documents in a natural, readable way."""
@@ -279,7 +341,7 @@ class ChatbotAgent:
         # Include long-term memory
         memory_str = f"\n\nWhat I remember about you:\n{long_term_memory}" if long_term_memory else ""
 
-        # Balanced system prompt - faithful yet helpful
+        # Balanced system prompt - faithful yet helpful, with two-stage awareness
         system_prompt = f"""You are EduPilot, a friendly and knowledgeable AI assistant helping Indian students find scholarships, internships, and educational opportunities.
 
 Today: {current_date}
@@ -289,23 +351,32 @@ AVAILABLE SCHOLARSHIP INFORMATION:
 {context if context else "I don't have specific scholarship data for this query right now."}
 
 RESPONSE GUIDELINES:
-- Use the available scholarship information as your primary source for specific details
-- When providing amounts, deadlines, or eligibility criteria, reference the specific scholarship and state if the information comes from the available data
-- If specific details aren't available, acknowledge this clearly: "I don't have the specific [amount/deadline/criteria] information for this scholarship"
-- Be helpful and comprehensive with the information you do have
-- For greetings and casual conversation, respond appropriately and briefly
-- Organize scholarship information with clear scholarship names as headers
 
-ACCURACY REQUIREMENTS:
+**Two-Stage Response System:**
+1. **Brief List Queries** (e.g., "which scholarships am I eligible for?"):
+   - Present the scholarship titles with amounts clearly
+   - Keep response concise and scannable
+   - Add a friendly prompt encouraging them to ask for details
+   - Example: "Here are 3 scholarships you're eligible for: [list]. Want to know more about any of these?"
+
+2. **Detail Queries** (e.g., "tell me about AICTE Pragati"):
+   - Provide comprehensive information from the available data
+   - Include eligibility criteria, amounts, deadlines, documents, and application process
+   - Use the available scholarship information as your primary source
+   - When providing specific details, reference the scholarship name
+
+**Accuracy Requirements:**
 - Don't invent specific amounts, dates, or criteria not in the available information
 - When uncertain about details, clearly indicate the limitation
 - Always distinguish between information from the available data vs general guidance
 
-RESPONSE STYLE:
+**Response Style:**
 - Keep responses proportional to the question type
 - Use clear formatting for scholarship details
 - Be encouraging and supportive
 - Answer in the same language as the student
+- For brief lists: concise and scannable
+- For details: comprehensive and well-organized
 
 Remember: Be helpful and thorough with available information while being honest about limitations."""
 

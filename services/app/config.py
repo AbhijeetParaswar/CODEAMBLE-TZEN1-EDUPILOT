@@ -62,6 +62,10 @@ class Settings(BaseSettings):
     ollama_model: str = "llama3.2:3b"
     ollama_temperature: float = 0.7
 
+    # Groq Configuration (cloud LLM alternative to Ollama)
+    groq_api_key: str = ""
+    groq_model: str = "llama-3.3-70b-versatile"
+
     # Auto-verification thresholds
     auto_approval_threshold: float = 0.85
     review_threshold: float = 0.60

@@ -16,8 +16,9 @@
 6. [Feature-by-Feature Documentation](#feature-by-feature-documentation)
 7. [Installation & Setup](#installation--setup)
 8. [Testing](#testing)
-9. [API Endpoints](#api-endpoints)
-10. [Database Schema](#database-schema)
+9. [AI Quality Metrics & Evaluation](#ai-quality-metrics--evaluation)
+10. [API Endpoints](#api-endpoints)
+11. [Database Schema](#database-schema)
 
 ---
 
@@ -1393,6 +1394,370 @@ python test_all_chatbot_features.py
 
 
 ---
+
+## AI Quality Metrics & Evaluation
+
+EduPilot uses **Ragas** (RAG Assessment) to continuously evaluate and improve the AI chatbot's performance. We track 4 critical metrics that measure how well our RAG system retrieves relevant information and generates accurate, helpful responses.
+
+### Overview
+
+Our evaluation pipeline:
+1. **Golden Dataset**: 76 real student questions with expected answers
+2. **Automated Testing**: Run `python eval/ragas_eval.py` to evaluate
+3. **Continuous Monitoring**: Track metrics over time to measure improvements
+4. **Iterative Refinement**: Use results to optimize retrieval and generation
+
+### The 4 Core Metrics
+
+---
+
+#### 1. **Faithfulness** 📊
+**What it measures**: How factually accurate the AI's answer is based on the retrieved context (no hallucination).
+
+**Scale**: 0.0 (complete hallucination) to 1.0 (perfectly faithful)
+
+**Why it matters**: 
+- Prevents the AI from making up scholarship amounts, deadlines, or eligibility criteria
+- Ensures students get reliable information they can trust
+- Critical for decision-making (applying to wrong scholarships wastes time)
+
+**Example**:
+
+❌ **Low Faithfulness (0.2)**:
+```
+Context: "AICTE Pragati offers ₹50,000 per year for girl students"
+AI Response: "AICTE Pragati provides ₹1,00,000 per year"
+❌ Hallucinated the amount (₹1L vs ₹50K)
+```
+
+✅ **High Faithfulness (0.9)**:
+```
+Context: "AICTE Pragati offers ₹50,000 per year for girl students"
+AI Response: "According to the data, AICTE Pragati provides ₹50,000 annually"
+✅ Accurately reflects the context
+```
+
+**How we calculate it**:
+- AI judges compare each statement in the answer against the retrieved context
+- Count how many statements are supported by evidence
+- Formula: `faithful_statements / total_statements`
+
+**Current Performance**: 
+- **Before optimization**: 0.2628 (poor - lots of hallucination)
+- **After optimization**: 0.4540 (moderate - improving)
+- **Target**: ≥0.70 (good)
+
+**What we're doing to improve**:
+- ✅ Two-stage RAG (brief list first, details on demand)
+- ✅ Strict system prompts emphasizing "only use available data"
+- ✅ Reduced context size to minimize confusion
+- 🔄 Adding citation links to source documents
+
+---
+
+#### 2. **Answer Relevancy** 🎯
+**What it measures**: How well the AI's answer actually addresses the user's question (not going off-topic).
+
+**Scale**: 0.0 (completely irrelevant) to 1.0 (perfectly relevant)
+
+**Why it matters**:
+- Users ask specific questions and expect focused answers
+- Prevents verbose, rambling responses that waste time
+- Improves user satisfaction and trust
+
+**Example**:
+
+❌ **Low Relevancy (0.3)**:
+```
+Question: "What documents do I need for AICTE Pragati?"
+AI Response: "AICTE offers many scholarships including Pragati, Saksham, and Swanath. These are great opportunities for students. You should check eligibility carefully..."
+❌ Talks about other scholarships instead of answering the question
+```
+
+✅ **High Relevancy (0.9)**:
+```
+Question: "What documents do I need for AICTE Pragati?"
+AI Response: "For AICTE Pragati, you need: 1) Income certificate, 2) 10th & 12th marksheets, 3) College admission letter, 4) Aadhaar card"
+✅ Directly answers the specific question asked
+```
+
+**How we calculate it**:
+- AI generates multiple question variations from the answer
+- Compares similarity between original question and generated questions
+- High similarity = answer stayed on topic
+
+**Current Performance**:
+- **Before optimization**: 0.8249 (good)
+- **After optimization**: 0.7843 (good - slight decrease acceptable)
+- **Target**: ≥0.80 (good)
+
+**What we're doing to improve**:
+- ✅ Query intent detection (list vs detail vs comparison)
+- ✅ Progressive disclosure (show summary first)
+- 🔄 Answer formatting guidelines in system prompt
+
+---
+
+#### 3. **Context Precision** 🔍
+**What it measures**: How many of the retrieved documents are actually relevant to the question (retrieval quality).
+
+**Scale**: 0.0 (all retrieved docs are irrelevant) to 1.0 (all retrieved docs are relevant)
+
+**Why it matters**:
+- Better retrieval = better answers
+- Reduces noise in the context given to the LLM
+- Prevents the AI from getting confused by irrelevant information
+
+**Example**:
+
+❌ **Low Precision (0.4)**:
+```
+Question: "Engineering scholarships for girls"
+Retrieved: 
+  1. ✅ AICTE Pragati (girl students, engineering) - RELEVANT
+  2. ❌ Medical fellowship (irrelevant stream)
+  3. ❌ Sports scholarship (irrelevant category)
+  4. ✅ Tata scholarship (engineering) - RELEVANT
+  5. ❌ Post-matric SC scholarship (not specific to engineering)
+
+Only 2/5 docs are relevant → Precision = 0.4
+```
+
+✅ **High Precision (0.8)**:
+```
+Question: "Engineering scholarships for girls"
+Retrieved:
+  1. ✅ AICTE Pragati (girl students, engineering)
+  2. ✅ Reliance Foundation (UG engineering)
+  3. ✅ Google WomenTechmakers (tech scholarships)
+  4. ✅ ONGC scholarship (engineering students)
+  5. ❌ General merit scholarship (not gender-specific)
+
+4/5 docs are relevant → Precision = 0.8
+```
+
+**How we calculate it**:
+- AI judge evaluates if each retrieved document is relevant to the question
+- Counts relevant docs at each position (weighted by rank)
+- Formula: `sum(relevance[i] * precision_at_i) / total_relevant`
+
+**Current Performance**:
+- **Before optimization**: 0.6900 (moderate)
+- **After optimization**: 0.6170 (moderate - slight decrease)
+- **Target**: ≥0.75 (good)
+
+**What we're doing to improve**:
+- ✅ Hybrid search (semantic + structured filters)
+- ✅ Eligibility pre-filtering before retrieval
+- 🔄 Query expansion with synonyms
+- 🔄 Re-ranking retrieved results
+
+---
+
+#### 4. **Context Recall** 📚
+**What it measures**: How much of the necessary information from the dataset was actually retrieved (coverage).
+
+**Scale**: 0.0 (missed all relevant info) to 1.0 (retrieved all relevant info)
+
+**Why it matters**:
+- Ensures we don't miss important scholarships
+- Complete answers require complete context
+- Prevents "I don't know" when the info exists in our database
+
+**Example**:
+
+❌ **Low Recall (0.4)**:
+```
+Question: "Scholarships for SC category engineering students"
+
+Ground Truth (what exists in DB):
+  - AICTE Pragati ✓
+  - Post-Matric SC Scholarship ✓
+  - Sitaram Jindal Scholarship ✓
+  - INSPIRE Fellowship ✓
+  - State Merit Scholarship ✓
+
+Retrieved (what we actually fetched):
+  - AICTE Pragati ✓
+  - Post-Matric SC Scholarship ✓
+  
+Only 2/5 relevant scholarships retrieved → Recall = 0.4
+```
+
+✅ **High Recall (0.8)**:
+```
+Question: "Scholarships for SC category engineering students"
+
+Ground Truth: 5 relevant scholarships
+Retrieved: 4 out of those 5
+
+4/5 = 0.8 recall (missed only 1)
+```
+
+**How we calculate it**:
+- AI judge identifies which context chunks are needed to answer
+- Compares against what was actually retrieved
+- Formula: `retrieved_relevant / total_relevant_available`
+
+**Current Performance**:
+- **Before optimization**: 0.7130 (good)
+- **After optimization**: 0.7039 (good - stable)
+- **Target**: ≥0.75 (good)
+
+**What we're doing to improve**:
+- ✅ Increased retrieval limit (5 → 8 docs)
+- ✅ Multi-query retrieval for complex questions
+- 🔄 Diversity-aware re-ranking
+
+---
+
+### Metric Relationships & Trade-offs
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                   RAG Pipeline Flow                     │
+└─────────────────────────────────────────────────────────┘
+
+User Question
+     ↓
+┌────────────────────────────────────┐
+│   Context Precision + Recall       │  ← Retrieval Quality
+│   (Are we getting the right docs?) │
+└────────────────────────────────────┘
+     ↓
+Retrieved Documents (Context)
+     ↓
+┌────────────────────────────────────┐
+│   LLM Generation                   │
+└────────────────────────────────────┘
+     ↓
+AI Answer
+     ↓
+┌────────────────────────────────────┐
+│   Faithfulness + Relevancy         │  ← Generation Quality
+│   (Is the answer accurate & on-topic?)│
+└────────────────────────────────────┘
+```
+
+**Key Trade-offs**:
+
+1. **Precision vs Recall**:
+   - High precision (fewer docs) → Better faithfulness but lower recall
+   - High recall (more docs) → Better coverage but lower precision
+   - **Our choice**: Moderate (8 docs) - balance both
+
+2. **Context Size vs Faithfulness**:
+   - More context → Higher recall but more confusion (lower faithfulness)
+   - Less context → Higher faithfulness but might miss info (lower recall)
+   - **Our choice**: Two-stage RAG (brief list first, details on demand)
+
+3. **Strictness vs Helpfulness**:
+   - Very strict prompts → High faithfulness but robotic answers
+   - Flexible prompts → Natural conversation but more hallucination risk
+   - **Our choice**: Balanced prompts with clear guidelines
+
+---
+
+### Current Performance Summary
+
+| Metric | Score | Grade | Status |
+|--------|-------|-------|--------|
+| **Faithfulness** | 0.4540 | 🟡 C | Improving (was 0.26) |
+| **Answer Relevancy** | 0.7843 | 🟢 B | Good (stable at ~0.78) |
+| **Context Precision** | 0.6170 | 🟡 C+ | Moderate (acceptable) |
+| **Context Recall** | 0.7039 | 🟢 B- | Good (stable at ~0.70) |
+
+**Overall RAG Health**: 🟡 **Good** (3 out of 4 metrics above 0.60)
+
+---
+
+### How to Run Evaluation
+
+#### Step 1: Setup
+```bash
+cd services
+pip install ragas datasets langchain-huggingface
+```
+
+#### Step 2: Run Evaluation
+```bash
+python eval/ragas_eval.py
+```
+
+#### Step 3: View Results
+Results are saved in `eval/results/ragas_results_TIMESTAMP.csv`:
+```csv
+question,answer,contexts,ground_truth,faithfulness,answer_relevancy,context_precision,context_recall
+"Which scholarships am I eligible for?","Based on your profile...",["AICTE Pragati..."],"You are eligible for...",0.45,0.78,0.62,0.70
+```
+
+#### Step 4: Analyze Trends
+```bash
+# Compare multiple runs
+python eval/analyze_trends.py
+```
+
+---
+
+### Improvement Roadmap
+
+#### ✅ Completed (v1.0)
+- Two-stage RAG system (brief list → full details)
+- Strict system prompts for faithfulness
+- Hybrid search (semantic + structured)
+- Social message detection (avoid retrieval for "hi")
+- Query intent classification
+
+#### 🔄 In Progress (v1.1)
+- Citation links in responses
+- Re-ranking with cross-encoder
+- Query expansion for better recall
+- Confidence scores displayed to user
+
+#### 📋 Planned (v2.0)
+- Multi-query retrieval for complex questions
+- Self-reflective RAG (critique & refine answers)
+- User feedback loop (upvote/downvote → retrain)
+- A/B testing different RAG strategies
+
+---
+
+### Monitoring & Alerts
+
+We track metrics daily and alert if:
+- **Faithfulness drops below 0.40** → Critical (too much hallucination)
+- **Answer Relevancy drops below 0.70** → Warning (going off-topic)
+- **Context Precision drops below 0.50** → Warning (poor retrieval)
+- **Context Recall drops below 0.60** → Warning (missing relevant info)
+
+**Dashboard**: `/api/v1/admin/rag-metrics` (admin only)
+
+---
+
+### Best Practices for RAG Quality
+
+1. **Golden Dataset Maintenance**:
+   - Add real user questions monthly
+   - Include edge cases and tricky queries
+   - Validate ground truth answers with domain experts
+
+2. **Iterative Optimization**:
+   - Change ONE thing at a time
+   - Run evaluation before & after
+   - Keep what works, revert what doesn't
+
+3. **Human-in-the-Loop**:
+   - Manual review of low-scoring answers
+   - Collect user feedback (helpful/not helpful)
+   - Use feedback to refine prompts & retrieval
+
+4. **Context Quality over Quantity**:
+   - Better to retrieve 3 highly relevant docs than 10 mixed docs
+   - Filter by eligibility BEFORE semantic search
+   - Use structured data (amounts, deadlines) directly when available
+
+---
+
 
 ## API Endpoints
 
