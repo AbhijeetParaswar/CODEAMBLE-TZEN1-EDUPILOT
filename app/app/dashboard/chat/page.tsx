@@ -356,7 +356,7 @@ export default function ChatPage() {
       setMessages((prev) => [...prev, assistantMessage]);
 
       const reader = response.body.getReader();
-      const decoder = new TextDecoder();
+      const decoder = new TextDecoder("utf-8");
       let buffer = "";
       let completed = false;
 
@@ -371,7 +371,12 @@ export default function ChatPage() {
             .split("\n")
             .find((line) => line.startsWith("data: "));
           if (!dataLine) continue;
-          const eventData = JSON.parse(dataLine.slice(6));
+          let eventData;
+          try {
+            eventData = JSON.parse(dataLine.slice(6));
+          } catch {
+            continue;
+          }
           if (eventData.type === "token") {
             setMessages((previous) =>
               previous.map((item) =>
@@ -403,7 +408,7 @@ export default function ChatPage() {
       const errorMsg: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: `⚠️ ${errorMessage}. Please make sure the backend is running and Ollama is available at http://localhost:11434`,
+        content: `⚠️ ${errorMessage}`,
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, errorMsg]);
