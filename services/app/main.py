@@ -72,7 +72,12 @@ app = FastAPI(title=settings.app_name, lifespan=lifespan)
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://devedupilot.xyz"],  # no trailing slash!
+    allow_origins=[
+    "http://localhost:3000",         # Local development (Next.js default)
+    "http://127.0.0.1:3000",
+    "https://devedupilot.xyz",
+    "https://www.devedupilot.xyz",
+],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -95,8 +100,8 @@ app.include_router(feedback.router, prefix="/api/v1")
 app.include_router(search_api.router)
 app.include_router(documents_api.router)
 app.include_router(connectors.router)
-app.include_router(chat.router, prefix="/api/v1")
-app.include_router(eval_routes.router, prefix="/api/v1")
+app.include_router(eval_routes.router, prefix="/api/v1")  # AI Quality Metrics
+app.include_router(chat.router, prefix="/api/v1")  # Chat endpoint
 
 
 @app.get("/health")
